@@ -9,6 +9,8 @@
 defined("_JEXEC") or die();
 
 use Joomla\CMS\Factory;
+use Joomla\CMS\Helper\TagsHelper;
+use Joomla\CMS\Categories\Categories;
 
 class plgContentAutomaticIntroImage extends JPlugin
 {
@@ -41,6 +43,40 @@ class plgContentAutomaticIntroImage extends JPlugin
             return true;
         }
 
+        $article->created = $article->publish_up;
+
+        if ($article->metadesc == "") {
+            $article->setError("No meta description!");
+            return false;
+        }
+
+        $categories = Categories::getInstance("Content", []);
+        $category_alias = $categories->get($article->catid)->alias;
+
+        if ($category_alias == "actualites" || $category_alias == "dossiers") {
+            $article->setError(
+                "Invalid category (\"Dossiers\" or \"Actualités\")"
+            );
+            return false;
+        }
+
+        $tagsHelper = new TagsHelper();
+        $tags = join(", ", $tagsHelper->getTagNames($article->newTags));
+
+        if ($tags == "") {
+            Factory::getApplication()->enqueueMessage(
+                "No tag has been set!",
+                "warning"
+            );
+        } else {
+            $article->metakey = $tags;
+            Factory::getApplication()->enqueueMessage(
+                "Keywords sucessfully set to \"{$article->metakey}\"",
+                "message"
+            );
+        }
+
+        // Treatment of the images
         $images = json_decode($article->images);
 
         // Check ImageMagick
@@ -54,28 +90,189 @@ class plgContentAutomaticIntroImage extends JPlugin
             return true;
         }
 
-        // Return if intro image is already set
-        if (isset($images->image_intro) and !empty($images->image_intro)) {
-            Factory::getApplication()->enqueueMessage(
-                JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
-                "notice"
-            );
+        $dom = new DOMDocument();
+        if ($article->introtext === ""):
             return true;
+        endif;
+        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $article->introtext);
+        $all_images = $dom->getElementsByTagName("img");
+
+        if (true) {
+            //$this->params->get("ConvertAllImages") == 0) {
+            $nb_converted = 0;
+            $nb_moved = 0;
+            if (count($all_images) > 0) {
+                for ($i = 0; $i < sizeof($all_images); $i++) {
+                    $image_location = urldecode(
+                        $all_images->item($i)->getAttribute("src")
+                    );
+                    if (!str_starts_with($image_location, "images/")) {
+                        //FIXME: get parameter from media manager
+                        continue;
+                    }
+
+                    // Normalize name
+                    $output_link = strtolower(
+                        preg_replace("/_/", "-", $image_location)
+                    );
+                    $image_location = JPATH_ROOT . "/" . $image_location;
+                    $output_location = JPATH_ROOT . "/" . $output_link;
+
+                    $folder = dirname($output_location);
+                    if (!is_dir($folder)) {
+                        mkdir($folder, 0755, true);
+                    }
+
+                    if (
+                        str_ends_with($image_location, ".webp") ||
+                        str_ends_with($image_location, ".svg") ||
+                        str_ends_with($image_location, ".avif") ||
+                        str_ends_with($image_location, ".ico")
+                    ) {
+                        if ($output_location != $image_location) {
+                            // Normalize name: move the image
+                            rename($image_location, $output_location);
+                            $all_images
+                                ->item($i)
+                                ->setAttribute("src", $output_link);
+                            $all_images
+                                ->item($i)
+                                ->setAttribute(
+                                    "data-path",
+                                    preg_replace(
+                                        "/^images/",
+                                        "local-images:",
+                                        $output_link
+                                    )
+                                );
+                            $nb_moved++;
+                        }
+                        continue;
+                    }
+
+                    $output_link = preg_replace(
+                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                        ".webp",
+                        $output_link
+                    );
+
+                    $output_location = preg_replace(
+                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                        ".webp",
+                        $output_location
+                    );
+
+                    // Create webp image
+                    $is_gif = false;
+                    if (file_exists($image_location)) {
+                        $info = getimagesize($image_location);
+                        $is_alpha = false;
+                        if ($info["mime"] == "image/jpeg") {
+                            $image = imagecreatefromjpeg($image_location);
+                        } elseif ($is_alpha = $info["mime"] == "image/gif") {
+                            $is_gif = true;
+                        } elseif ($is_alpha = $info["mime"] == "image/png") {
+                            $image = imagecreatefrompng($image_location);
+                        } else {
+                            Factory::getApplication()->enqueueMessage(
+                                "Wrong image file type for {$image_location}",
+                                "error"
+                            );
+                            continue;
+                        }
+
+                        if (!$is_gif) {
+                            if ($is_alpha) {
+                                imagepalettetotruecolor($image);
+                                imagealphablending($image, true);
+                                imagesavealpha($image, true);
+                            }
+                            imagewebp($image, $output_location, 80); //TODO: configure quality level
+                        } else {
+                            $output = null;
+                            $retval = null;
+                            exec(
+                                "convert {$image_location} {$output_location}",
+                                $output,
+                                $retval
+                            ); // PHP version does not support gif.
+                            if ($retval != 0) {
+                                Factory::getApplication()->enqueueMessage(
+                                    join(" / ", $output),
+                                    "error"
+                                );
+                                continue;
+                            }
+                        }
+                        unlink($image_location);
+                        $nb_converted++;
+                    }
+                    // Replace in DOM
+                    $all_images->item($i)->setAttribute("src", $output_link);
+                    $all_images
+                        ->item($i)
+                        ->setAttribute(
+                            "data-path",
+                            preg_replace(
+                                "/^images/",
+                                "local-images:",
+                                $output_link
+                            )
+                        );
+                }
+
+                // Remove the <html><body>
+                $to_store = preg_replace(
+                    "!</?body>!",
+                    "",
+                    $dom->saveXML($dom->documentElement->firstChild)
+                );
+                $article->introtext = $to_store;
+            }
+            if ($nb_converted == 0) {
+                Factory::getApplication()->enqueueMessage(
+                    //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                    "Great! All images were already in webp format",
+                    "message"
+                );
+            } else {
+                Factory::getApplication()->enqueueMessage(
+                    //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_WEBP_DONE"),
+                    "{$nb_converted} image(s) successfully converted to webp",
+                    "message"
+                );
+            }
+            if ($nb_moved != 0) {
+                Factory::getApplication()->enqueueMessage(
+                    //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                    "{$nb_moved} images have been renamed",
+                    "info"
+                );
+            }
         }
 
         if ($this->params->get("UseFirstImage") == 1) {
-            $dom = new DOMDocument();
             if ($article->introtext === ""):
                 return true;
             endif;
-            $dom->loadHTML($article->introtext);
-            $all_images = $dom->getElementsByTagName("img");
             if (count($all_images) > 0) {
-                $src_img = $all_images->item(0)->getAttribute("src");
+                $src_img = urldecode($all_images->item(0)->getAttribute("src"));
                 $src_alt = $all_images->item(0)->getAttribute("alt");
                 $src_caption = "";
             } else {
                 return true;
+            }
+            if (
+                !isset($images->image_fulltext) or
+                empty($images->image_fulltext)
+            ) {
+                $images->image_fulltext = $src_img;
+                $images->image_fulltext_alt = $src_alt;
+                Factory::getApplication()->enqueueMessage(
+                    //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_FULLTEXT_SET"),
+                    "Article image has automatically been set to {$src_img}",
+                    "message"
+                );
             }
         } else {
             if (
@@ -85,6 +282,15 @@ class plgContentAutomaticIntroImage extends JPlugin
                 return true;
             }
             $src_img = $images->image_fulltext;
+        }
+
+        // Return if intro image is already set
+        if (isset($images->image_intro) and !empty($images->image_intro)) {
+            Factory::getApplication()->enqueueMessage(
+                JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
+                "notice"
+            );
+            return true;
         }
 
         $width = (int) $this->params->get("Width");
@@ -230,7 +436,6 @@ class plgContentAutomaticIntroImage extends JPlugin
         }
 
         $article->images = json_encode($images);
-
         $thumb->destroy();
 
         return true;
