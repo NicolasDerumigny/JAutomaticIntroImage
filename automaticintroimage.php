@@ -22,6 +22,107 @@ class plgContentAutomaticIntroImage extends JPlugin
      */
     protected $autoloadLanguage = true;
 
+    private function convertAndDeleteImage($image_location, &$nb_converted, &$nb_moved, &$output_link, &$only_moved) {
+        $only_moved = false;
+        if (!str_starts_with($image_location, "images/")) {
+            //FIXME: get parameter from media manager
+            return false;
+        }
+
+        // Normalize name
+        $output_link = strtolower(
+            preg_replace(
+                "/-thumb\./",
+                "_thumb.",
+                preg_replace("/_/", "-", $image_location)
+            )
+        );
+        $image_location = JPATH_ROOT . "/" . $image_location;
+        $output_location = JPATH_ROOT . "/" . $output_link;
+
+        $folder = dirname($output_location);
+        if (!is_dir($folder)) {
+            mkdir($folder, 0755, true);
+        }
+
+        if (
+            str_ends_with($image_location, ".webp") ||
+            str_ends_with($image_location, ".svg") ||
+            str_ends_with($image_location, ".avif") ||
+            str_ends_with($image_location, ".ico")
+        ) {
+            if ($output_location != $image_location) {
+                // Normalize name: move the image
+                rename($image_location, $output_location);
+                $nb_moved++;
+                $only_moved = true;
+                return true;
+            }
+            return false;
+        }
+
+        $output_link = preg_replace(
+            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+            ".webp",
+            $output_link
+        );
+
+        $output_location = preg_replace(
+            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+            ".webp",
+            $output_location
+        );
+
+        // Create webp image
+        $is_gif = false;
+        if (file_exists($image_location)) {
+            $info = getimagesize($image_location);
+            $is_alpha = false;
+            if ($info["mime"] == "image/jpeg") {
+                $image = imagecreatefromjpeg($image_location);
+            } elseif ($is_alpha = $info["mime"] == "image/gif") {
+                $is_gif = true;
+            } elseif ($is_alpha = $info["mime"] == "image/png") {
+                $image = imagecreatefrompng($image_location);
+            } else {
+                Factory::getApplication()->enqueueMessage(
+                    "Wrong image file type for {$image_location}",
+                    "error"
+                );
+                return false;
+            }
+
+            if (!$is_gif) {
+                if ($is_alpha) {
+                    imagepalettetotruecolor($image);
+                    imagealphablending($image, true);
+                    imagesavealpha($image, true);
+                }
+                imagewebp($image, $output_location, 80); //TODO: configure quality level
+            } else {
+                $output = null;
+                $retval = null;
+                exec(
+                    "convert {$image_location} {$output_location}",
+                    $output,
+                    $retval
+                ); // PHP version does not support gif.
+                if ($retval != 0) {
+                    Factory::getApplication()->enqueueMessage(
+                        join(" / ", $output),
+                        "error"
+                    );
+                    return false;
+                }
+            }
+            unlink($image_location);
+            $nb_converted++;
+            return true;
+        }
+        // If the file was not found, then it *should* have been converted before
+        return true;
+    }
+
     /**
         * Automatic creation of resized intro image from article full image
         *
@@ -64,10 +165,10 @@ class plgContentAutomaticIntroImage extends JPlugin
         $tags = join(", ", $tagsHelper->getTagNames($article->newTags));
 
         if ($tags == "") {
-            Factory::getApplication()->enqueueMessage(
+            $article->setError(
                 "No tag has been set!",
-                "warning"
             );
+            return false;
         } else {
             $article->metakey = $tags;
             Factory::getApplication()->enqueueMessage(
@@ -101,117 +202,20 @@ class plgContentAutomaticIntroImage extends JPlugin
             //$this->params->get("ConvertAllImages") == 0) {
             $nb_converted = 0;
             $nb_moved = 0;
+            $output_link = "";
+            $only_moved = false;
             if (count($all_images) > 0) {
                 for ($i = 0; $i < sizeof($all_images); $i++) {
                     $image_location = urldecode(
                         $all_images->item($i)->getAttribute("src")
                     );
-                    if (!str_starts_with($image_location, "images/")) {
-                        //FIXME: get parameter from media manager
-                        continue;
-                    }
 
-                    // Normalize name
-                    $output_link = strtolower(
-                        preg_replace("/_/", "-", $image_location)
-                    );
-                    $image_location = JPATH_ROOT . "/" . $image_location;
-                    $output_location = JPATH_ROOT . "/" . $output_link;
+                    $return_val = $this->convertAndDeleteImage($image_location, $nb_converted, $nb_moved, $output_link, $only_moved);
 
-                    $folder = dirname($output_location);
-                    if (!is_dir($folder)) {
-                        mkdir($folder, 0755, true);
-                    }
-
-                    if (
-                        str_ends_with($image_location, ".webp") ||
-                        str_ends_with($image_location, ".svg") ||
-                        str_ends_with($image_location, ".avif") ||
-                        str_ends_with($image_location, ".ico")
-                    ) {
-                        if ($output_location != $image_location) {
-                            // Normalize name: move the image
-                            rename($image_location, $output_location);
-                            $all_images
-                                ->item($i)
-                                ->setAttribute("src", $output_link);
-                            $all_images
-                                ->item($i)
-                                ->setAttribute(
-                                    "data-path",
-                                    preg_replace(
-                                        "/^images/",
-                                        "local-images:",
-                                        $output_link
-                                    )
-                                );
-                            $nb_moved++;
-                        }
-                        continue;
-                    }
-
-                    $output_link = preg_replace(
-                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
-                        ".webp",
-                        $output_link
-                    );
-
-                    $output_location = preg_replace(
-                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
-                        ".webp",
-                        $output_location
-                    );
-
-                    // Create webp image
-                    $is_gif = false;
-                    if (file_exists($image_location)) {
-                        $info = getimagesize($image_location);
-                        $is_alpha = false;
-                        if ($info["mime"] == "image/jpeg") {
-                            $image = imagecreatefromjpeg($image_location);
-                        } elseif ($is_alpha = $info["mime"] == "image/gif") {
-                            $is_gif = true;
-                        } elseif ($is_alpha = $info["mime"] == "image/png") {
-                            $image = imagecreatefrompng($image_location);
-                        } else {
-                            Factory::getApplication()->enqueueMessage(
-                                "Wrong image file type for {$image_location}",
-                                "error"
-                            );
-                            continue;
-                        }
-
-                        if (!$is_gif) {
-                            if ($is_alpha) {
-                                imagepalettetotruecolor($image);
-                                imagealphablending($image, true);
-                                imagesavealpha($image, true);
-                            }
-                            imagewebp($image, $output_location, 80); //TODO: configure quality level
-                        } else {
-                            $output = null;
-                            $retval = null;
-                            exec(
-                                "convert {$image_location} {$output_location}",
-                                $output,
-                                $retval
-                            ); // PHP version does not support gif.
-                            if ($retval != 0) {
-                                Factory::getApplication()->enqueueMessage(
-                                    join(" / ", $output),
-                                    "error"
-                                );
-                                continue;
-                            }
-                        }
-                        unlink($image_location);
-                        $nb_converted++;
-                    }
-                    // Replace in DOM
-                    $all_images->item($i)->setAttribute("src", $output_link);
-                    $all_images
-                        ->item($i)
-                        ->setAttribute(
+                    if ($return_val) {
+                        // Replace in DOM
+                        $all_images->item($i)->setAttribute("src", $output_link);
+                        $all_images->item($i)->setAttribute(
                             "data-path",
                             preg_replace(
                                 "/^images/",
@@ -219,6 +223,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                                 $output_link
                             )
                         );
+                    }
                 }
 
                 // Remove the <html><body>
@@ -229,6 +234,60 @@ class plgContentAutomaticIntroImage extends JPlugin
                 );
                 $article->introtext = $to_store;
             }
+
+            $write_json = false;
+            if (isset($images->image_fulltext)) {
+                $image = $images->image_fulltext;
+                $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
+                $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
+                if (!str_contains($image, '#')) {
+                    $postfix = "";
+                }
+                $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
+                if ($return_val) {
+                    if (!$only_moved) {
+                        $postfix = preg_replace(
+                            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                           ".webp", $postfix);
+                    }
+
+                    $images->image_fulltext = $output_link . $postfix;
+                    Factory::getApplication()->enqueueMessage(
+                        "Successfully converted existing article image to webp",
+                        "message"
+                    );
+                    $write_json = true;
+                }
+            }
+
+            if (isset($images->image_intro)) {
+                $image = $images->image_intro;
+                $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
+                $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
+                if (!str_contains($image, '#')) {
+                    $postfix = "";
+                }
+                $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
+                if ($return_val) {
+                    if (!$only_moved) {
+                        $postfix = preg_replace(
+                            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                            ".webp", $postfix);
+                    }
+
+                    $images->image_intro = $output_link . $postfix;
+                    Factory::getApplication()->enqueueMessage(
+                        "Successfully converted existing introduction image to webp",
+                        "message"
+                    );
+                    $write_json = true;
+                }
+            }
+
+            if ($write_json) {
+                $article->images = json_encode($images);
+            }
+
             if ($nb_converted == 0) {
                 Factory::getApplication()->enqueueMessage(
                     //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
