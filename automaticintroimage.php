@@ -135,7 +135,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         *
         * @return  boolean	True on success.
         */
-    public function onContentBeforeSave($context, $article, $isNew)
+    public function onContentBeforeSave($context, $article, $isNew, $data)
     {
         // Check if we're saving an article
         $allowed_contexts = ["com_content.article", "com_content.form"];
@@ -161,8 +161,20 @@ class plgContentAutomaticIntroImage extends JPlugin
             return false;
         }
 
+        $new_tags = [];
+        for ($tag_id=0; $tag_id < sizeof($data['tags']); $tag_id++) {
+            $tag = $data['tags'][$tag_id];
+            if (str_starts_with($tag, "#new#")) {
+                array_push($new_tags, substr($tag, 5));
+            }
+        }
         $tagsHelper = new TagsHelper();
-        $tags = join(", ", $tagsHelper->getTagNames($article->newTags));
+        $tags = join(
+            ", ",
+            array_merge(
+                $tagsHelper->getTagNames($article->newTags),
+                $new_tags)
+        );
 
         if ($tags == "") {
             $article->setError(
