@@ -22,8 +22,9 @@ class plgContentAutomaticIntroImage extends JPlugin
      */
     protected $autoloadLanguage = true;
 
-    private function convertAndDeleteImage($image_location, &$nb_converted, &$nb_moved, &$output_link, &$only_moved) {
+    private function convertAndDeleteImage(&$image_location, &$nb_converted, &$nb_moved, &$output_link, &$only_moved) {
         $only_moved = false;
+        $output_link = $image_location;
         if (!str_starts_with($image_location, "images/")) {
             //FIXME: get parameter from media manager
             return false;
@@ -41,8 +42,9 @@ class plgContentAutomaticIntroImage extends JPlugin
         $output_location = JPATH_ROOT . "/" . $output_link;
 
         $folder = dirname($output_location);
-        if (!is_dir($folder)) {
-            mkdir($folder, 0755, true);
+
+        if (!JFolder::exists($folder)) {
+            JFolder::create($folder);
         }
 
         if (
@@ -123,6 +125,97 @@ class plgContentAutomaticIntroImage extends JPlugin
         return true;
     }
 
+    private function stripAccents($str) {
+        return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
+    }
+
+    // Convert an input webp image to a webp image with same proportion with width `width`
+    // and suffix `suffix` (before extension). If the filename already contains the suffix,
+    // do nothing
+    private function resizeWebp($file_path, $width, $suffix, &$nb_miniatures, $height=null) {
+        if (str_contains($file_path, $suffix . ".webp")) {
+            return false;
+        }
+
+        if (!str_starts_with($file_path, "images/")) {
+            //FIXME: get parameter from media manager
+            return false;
+        }
+
+        $compression_level = (int) $this->params->get("ImageQuality");
+        if (
+            $compression_level < 50 or
+            $compression_level > 100
+        ) {
+            Factory::getApplication()->enqueueMessage(
+                JText::_(
+                    "PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_SETTINGS_ERROR"
+                ),
+                "error"
+            );
+            return true;
+        }
+
+        // Create resized image
+        $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
+        $thumb->scaleImage($width, 0);
+        $thumb->setImageCompressionQuality($compression_level);
+        $thumb->setInterlaceScheme(Imagick::INTERLACE_PLANE);
+        $extension_pos = strrpos($file_path, ".");
+        $image_with_suffix =
+            substr($file_path, 0, $extension_pos) .
+            $suffix .
+            substr($file_path, $extension_pos);
+
+        // Put the image in an absolute directory if said to do so
+        if ($this->params->get("AbsoluteDir") == 1) {
+            $thumb_dir = JPATH_ROOT . "/" . $this->params->get("AbsDirPath");
+            $subdir_pos = strrpos($image_with_suffix, "/");
+            $thumb_savepath =
+                $thumb_dir . substr($image_with_suffix, $subdir_pos);
+        }
+        // Put the image in a subdir if set to do so
+        elseif ($this->params->get("PutInSubdir") == 1) {
+            $subdir_pos = strrpos($image_with_suffix, "/");
+            $save_rel_location =
+                substr($image_with_suffix, 0, $subdir_pos) .
+                "/" .
+                $this->params->get("Subdir") .
+                substr($image_with_suffix, $subdir_pos);
+
+            // Check if the subdir already exist or create it
+            $img_subdir =
+                JPATH_ROOT .
+                "/" .
+                substr(
+                    $images->image_intro,
+                    0,
+                    strrpos($images->image_intro, "/")
+                );
+            if (!JFolder::exists($img_subdir)) {
+                JFolder::create($img_subdir);
+            }
+            $thumb_savepath = JPATH_ROOT . "/" . $save_rel_location;
+        } else {
+            $thumb_savepath = JPATH_ROOT . "/" . $image_with_suffix;
+        }
+
+        // Write resized image if it doesn't exist
+        // and set Joomla object values
+        if (!file_exists($thumb_savepath)) {
+            $thumb->writeImage($thumb_savepath);
+            $nb_miniatures++;
+        }
+
+        return true;
+    }
+
+    private function createAllThumbnails($image_location, &$nb_miniatures) {
+        $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures);
+        $this->resizeWebp($image_location, 1280, "_sd", $nb_miniatures);
+        $this->resizeWebp($image_location, 450, "_thumb", $nb_miniatures);
+    }
+
     /**
         * Automatic creation of resized intro image from article full image
         *
@@ -144,16 +237,18 @@ class plgContentAutomaticIntroImage extends JPlugin
             return true;
         }
 
+        // Set creation date to publication date
         $article->created = $article->publish_up;
 
+        // Check for meta description
         if ($article->metadesc == "") {
             $article->setError("No meta description!");
             return false;
         }
 
+        // Forbid certain categories
         $categories = Categories::getInstance("Content", []);
         $category_alias = $categories->get($article->catid)->alias;
-
         if ($category_alias == "actualites" || $category_alias == "dossiers") {
             $article->setError(
                 "Invalid category (\"Dossiers\" or \"Actualités\")"
@@ -161,6 +256,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             return false;
         }
 
+        // Check for tags and set keywords to tags list
         $new_tags = [];
         for ($tag_id=0; $tag_id < sizeof($data['tags']); $tag_id++) {
             $tag = $data['tags'][$tag_id];
@@ -175,7 +271,6 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $tagsHelper->getTagNames($article->newTags),
                 $new_tags)
         );
-
         if ($tags == "") {
             $article->setError(
                 "No tag has been set!",
@@ -188,6 +283,9 @@ class plgContentAutomaticIntroImage extends JPlugin
                 "message"
             );
         }
+
+        // Remove special charactures from alias
+        $article->alias = $this->stripAccents($article->alias);
 
         // Treatment of the images
         $images = json_decode($article->images);
@@ -203,6 +301,15 @@ class plgContentAutomaticIntroImage extends JPlugin
             return true;
         }
 
+        // Create thumb directory
+        if ($this->params->get("AbsoluteDir") == 1) {
+            $thumb_dir = JPATH_ROOT . "/" . $this->params->get("AbsDirPath");
+            if (!JFolder::exists($thumb_dir)) {
+                JFolder::create($thumb_dir);
+            }
+        }
+
+        // Convert all images to webp
         $dom = new DOMDocument();
         if ($article->introtext === ""):
             return true;
@@ -210,19 +317,27 @@ class plgContentAutomaticIntroImage extends JPlugin
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $article->introtext);
         $all_images = $dom->getElementsByTagName("img");
 
+        // Convert and create thumbnails
         if (true) {
             //$this->params->get("ConvertAllImages") == 0) {
             $nb_converted = 0;
             $nb_moved = 0;
             $output_link = "";
             $only_moved = false;
+            $nb_miniatures = 0;
             if (count($all_images) > 0) {
                 for ($i = 0; $i < sizeof($all_images); $i++) {
                     $image_location = urldecode(
                         $all_images->item($i)->getAttribute("src")
                     );
 
-                    $return_val = $this->convertAndDeleteImage($image_location, $nb_converted, $nb_moved, $output_link, $only_moved);
+                    $return_val = $this->convertAndDeleteImage(
+                        $image_location,
+                        $nb_converted,
+                        $nb_moved,
+                        $output_link,
+                        $only_moved);
+                    $this->createAllThumbnails($output_link, $nb_miniatures);
 
                     if ($return_val) {
                         // Replace in DOM
@@ -247,21 +362,23 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $article->introtext = $to_store;
             }
 
+            // If a fulltext image exists, create thumbnails but do not modify
             $write_json = false;
-            if (isset($images->image_fulltext)) {
+            if (isset($images->image_fulltext) and $image->image_fulltext !== "") {
                 $image = $images->image_fulltext;
                 $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
                 $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
                 if (!str_contains($image, '#')) {
                     $postfix = "";
                 }
+                $output_link = "";
                 $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
+                $this->createAllThumbnails($output_link, $nb_miniatures);
+
                 if ($return_val) {
-                    if (!$only_moved) {
-                        $postfix = preg_replace(
-                            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
-                           ".webp", $postfix);
-                    }
+                    $postfix = preg_replace(
+                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                       ".webp", $postfix);
 
                     $images->image_fulltext = $output_link . $postfix;
                     Factory::getApplication()->enqueueMessage(
@@ -272,7 +389,8 @@ class plgContentAutomaticIntroImage extends JPlugin
                 }
             }
 
-            if (isset($images->image_intro)) {
+            // If an intro image exists, convert it to a thumb and set it if this was not already the case
+            if (isset($images->image_intro) and $image->image_intro !== "") {
                 $image = $images->image_intro;
                 $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
                 $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
@@ -281,11 +399,20 @@ class plgContentAutomaticIntroImage extends JPlugin
                 }
                 $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
                 if ($return_val) {
-                    if (!$only_moved) {
-                        $postfix = preg_replace(
-                            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
-                            ".webp", $postfix);
+                    $return_val = $this->resizeWebp($output_link, 450, "_thumb", $nb_miniatures, 450);
+                    if ($return_val) {
+                        //FIXME: may be not set
+                        $output_link = "/" . $this->params->get("AbsDirPath") . "/" .
+                            preg_replace(
+                                "/\.webp/",
+                                "_thumb.webp",
+                                basename($image_path));
+                        $postfix = "#joomlaImage://local-image/" .
+                                $output_link . "/?width=450&height=450";
                     }
+                    $postfix = preg_replace(
+                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                        ".webp", $postfix);
 
                     $images->image_intro = $output_link . $postfix;
                     Factory::getApplication()->enqueueMessage(
@@ -320,6 +447,13 @@ class plgContentAutomaticIntroImage extends JPlugin
                     "info"
                 );
             }
+            if ($nb_miniatures != 0) {
+                Factory::getApplication()->enqueueMessage(
+                    //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                    "{$nb_miniatures} images have been converted for lower resolutions",
+                    "info"
+                );
+            }
         }
 
         if ($this->params->get("UseFirstImage") == 1) {
@@ -334,8 +468,8 @@ class plgContentAutomaticIntroImage extends JPlugin
                 return true;
             }
             if (
-                !isset($images->image_fulltext) or
-                empty($images->image_fulltext)
+                (!isset($images->image_fulltext)) or
+                $images->image_fulltext === ""
             ) {
                 $images->image_fulltext = $src_img;
                 $images->image_fulltext_alt = $src_alt;
@@ -344,6 +478,10 @@ class plgContentAutomaticIntroImage extends JPlugin
                     "Article image has automatically been set to {$src_img}",
                     "message"
                 );
+                $article->images = json_encode($images);
+            } else {
+                $src_img = preg_replace("/#.*/", "", $images->image_fulltext);
+                $src_alt = $images->image_fulltext_alt;
             }
         } else {
             if (
@@ -353,6 +491,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 return true;
             }
             $src_img = $images->image_fulltext;
+            $src_alt = $images->image_fulltext_alt;
         }
 
         // Return if intro image is already set
