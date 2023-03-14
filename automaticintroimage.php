@@ -536,5 +536,20 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         return true;
     }
+
+    // Forward options to TinyMCE
+    public function onBeforeRender() {
+        $doc = JFactory::getDocument();
+        $editorOptions = $doc->getScriptOptions('plg_editor_tinymce');
+
+        if(empty($editorOptions['tinyMCE']))
+        {
+            return;
+        }
+
+        $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
+
+        $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
+    }
 }
 ?>
