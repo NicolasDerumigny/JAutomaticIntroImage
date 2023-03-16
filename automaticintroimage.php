@@ -128,13 +128,13 @@ class plgContentAutomaticIntroImage extends JPlugin
     private function stripAccents($str) {
         $str = preg_replace("/•/", "", $str);
         $str = preg_replace("/--/", "-", $str);
-        return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUY');
+        return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ€$'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUYed');
     }
 
     // Convert an input webp image to a webp image with same proportion with width `width`
     // and suffix `suffix` (before extension). If the filename already contains the suffix,
     // do nothing
-    private function resizeWebp($file_path, $width, $suffix, &$nb_miniatures, &$x = null, &$y = null) {
+    private function resizeWebp($file_path, $width, $suffix, &$nb_miniatures, &$x = null, &$y = null, $crop = false) {
         if (str_contains($file_path, $suffix . ".webp")) {
             return false;
         }
@@ -160,10 +160,30 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Create resized image
         $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
-        if ($thumb->getImageWidth() > $thumb->getImageHeight):
-            $thumb->scaleImage($width, 0);
+        if ($crop):
+            if ($thumb->getImageWidth() > $thumb->getImageHeight()):
+                $thumb->scaleImage(0, $width);
+                $thumb->cropImage(
+                    $width,
+                    $width,
+                    ($thumb->getImageWidth() - $width) / 2,
+                    0
+                );
+           else:
+                $thumb->scaleImage($width, 0);
+                $thumb->cropImage(
+                    $width,
+                    $width,
+                    0,
+                    ($thumb->getImageHeight() - $width) / 2
+                );
+            endif;
         else:
-            $thumb->scaleImage(0, $width*9/16);
+            if ($thumb->getImageWidth() > $thumb->getImageHeight()):
+                $thumb->scaleImage($width, 0);
+            else:
+                $thumb->scaleImage(0, $width*9/16);
+            endif;
         endif;
         if (isset($x)):
             $x = $thumb->getImageWidth();
@@ -225,7 +245,7 @@ class plgContentAutomaticIntroImage extends JPlugin
     private function createAllThumbnails($image_location, &$nb_miniatures) {
         $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures);
         $this->resizeWebp($image_location, 1280, "_sd", $nb_miniatures);
-        $this->resizeWebp($image_location, 450, "_thumb", $nb_miniatures);
+        $this->resizeWebp($image_location, 450, "_mini", $nb_miniatures);
     }
 
     /**
@@ -378,7 +398,6 @@ class plgContentAutomaticIntroImage extends JPlugin
             // If a fulltext image exists, create thumbnails but do not modify
             $write_json = false;
             if (isset($images->image_fulltext) and $images->image_fulltext !== '') {
-
                 $image = $images->image_fulltext;
                 $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
                 $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
@@ -415,7 +434,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                     $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
                     $x = 0;
                     $y = 0;
-                    $this->resizeWebp($output_link, 450, "_thumb", $nb_miniatures, $x, $y);
+                    $this->resizeWebp($output_link, 450, "_thumb", $nb_miniatures, $x, $y, true);
                     //FIXME: may be not set
                     $output_link = "/" . $this->params->get("AbsDirPath") . "/" .
                         preg_replace(
@@ -518,6 +537,14 @@ class plgContentAutomaticIntroImage extends JPlugin
             return true;
         }
 
+        $nb_miniatures = 0;
+        $this->resizeWebp($src_img, 450, "_thumb", $nb_miniatures, $x, $y, true);
+        if ($nb_miniatures) {
+            Factory::getApplication()->enqueueMessage(
+                "Square miniature successfully cropped",
+                "message"
+           );
+        }
         $src_img = preg_replace("/#.*$/", "", $src_img);
         $src_img = preg_replace("/.webp$/", "_thumb.webp", $src_img);
         // FIXME what about if not set?
