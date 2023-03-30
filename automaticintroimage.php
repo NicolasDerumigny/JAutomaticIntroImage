@@ -582,6 +582,12 @@ class plgContentAutomaticIntroImage extends JPlugin
 
     // Forward options to TinyMCE
     public function onBeforeRender() {
+        $input = Factory::getApplication()->input;
+        if ($input->get("view") == "form" and $input->get("layout") == "edit") {
+            return true;
+        }
+
+
         $doc = JFactory::getDocument();
         $editorOptions = $doc->getScriptOptions('plg_editor_tinymce');
 
