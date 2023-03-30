@@ -126,7 +126,7 @@ class plgContentAutomaticIntroImage extends JPlugin
     }
 
     private function stripAccents($str) {
-        $str = preg_replace("/•/", "", $str);
+        $str = preg_replace("/[•,;!?:\"'><]/", "", $str);
         $str = preg_replace("/--/", "-", $str);
         return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ€$'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUYed');
     }
@@ -585,7 +585,7 @@ class plgContentAutomaticIntroImage extends JPlugin
     // Forward options to TinyMCE
     public function onBeforeRender() {
         $input = Factory::getApplication()->input;
-        if ($input->get("view") == "form" and $input->get("layout") == "edit") {
+        if (($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit") {
             return true;
         }
 
