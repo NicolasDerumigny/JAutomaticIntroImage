@@ -288,6 +288,22 @@ class plgContentAutomaticIntroImage extends JPlugin
             return false;
         }
 
+        if ($category_alias == "all-content") {
+            $root_cat = $categories->get();
+            $cats = $root_cat->getChildren(true);
+            foreach ($cats as $cat) {
+                if ($cat->alias == "breves") {
+                    $breves_catid = $cat->id;
+                    break;
+                }
+            }
+            $article->catid = $breves_catid;
+            Factory::getApplication()->enqueueMessage(
+                "Category automatically switched to \"Brèves\"",
+            );
+
+        }
+
         // Check for tags and set keywords to tags list
         $new_tags = [];
         for ($tag_id=0; $tag_id < sizeof($data['tags']); $tag_id++) {
