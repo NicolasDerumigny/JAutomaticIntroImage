@@ -538,6 +538,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         }
 
         $nb_miniatures = 0;
+        $src_img = preg_replace("/#.*$/", "", $src_img);
         $this->resizeWebp($src_img, 450, "_thumb", $nb_miniatures, $x, $y, true);
         if ($nb_miniatures) {
             Factory::getApplication()->enqueueMessage(
@@ -545,7 +546,6 @@ class plgContentAutomaticIntroImage extends JPlugin
                 "message"
            );
         }
-        $src_img = preg_replace("/#.*$/", "", $src_img);
         $src_img = preg_replace("/.webp$/", "_thumb.webp", $src_img);
         // FIXME what about if not set?
         $thumb_dir = $this->params->get("AbsDirPath");
@@ -574,7 +574,11 @@ class plgContentAutomaticIntroImage extends JPlugin
             return;
         }
 
+        // Always open in new tab
         $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
+        // No popup menu
+        $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
+        $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
 
         $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
     }
