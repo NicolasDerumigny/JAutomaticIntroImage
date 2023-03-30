@@ -333,7 +333,9 @@ class plgContentAutomaticIntroImage extends JPlugin
         }
 
         // Remove special charactures from alias
-        $article->alias = $this->stripAccents($article->alias);
+        if ($this->stripAccents($article->alias) != $article->alias) {
+            $article->alias = $this->stripAccents($article->alias);
+        }
 
         // Treatment of the images
         $images = json_decode($article->images);
