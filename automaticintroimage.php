@@ -127,6 +127,7 @@ class plgContentAutomaticIntroImage extends JPlugin
 
     private function stripAccents($str) {
         $str = preg_replace("/[•,;!?:\"'><]/", "", $str);
+        $str = preg_replace("/[  ]/", "-", $str); // Non-breaking space
         $str = preg_replace("/--/", "-", $str);
         return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ€$'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUYed');
     }
@@ -585,25 +586,21 @@ class plgContentAutomaticIntroImage extends JPlugin
     // Forward options to TinyMCE
     public function onBeforeRender() {
         $input = Factory::getApplication()->input;
-        if (($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit") {
-            return true;
-        }
-
-
         $doc = JFactory::getDocument();
         $editorOptions = $doc->getScriptOptions('plg_editor_tinymce');
 
-        if(empty($editorOptions['tinyMCE']))
-        {
+        if(empty($editorOptions['tinyMCE'])) {
             return;
+        }
+
+        if (!(($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit")) {
+            // No popup menu
+            $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
+            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
         }
 
         // Always open in new tab
         $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
-        // No popup menu
-        $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
-        $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
-
         $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
     }
 }
