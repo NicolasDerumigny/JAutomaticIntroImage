@@ -243,6 +243,14 @@ class plgContentAutomaticIntroImage extends JPlugin
         return true;
     }
 
+    private function print_time($begin_time) {
+        $total_time = (hrtime(true) - $begin_time)/1e+9;
+        Factory::getApplication()->enqueueMessage(
+            "Time to convert all images: {$total_time} seconds",
+            "message"
+        );
+    }
+
     private function createAllThumbnails($image_location, &$nb_miniatures) {
         $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures);
         $this->resizeWebp($image_location, 1280, "_sd", $nb_miniatures);
@@ -263,6 +271,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         */
     public function onContentBeforeSave($context, $article, $isNew, $data)
     {
+        $begin_time = hrtime(true);
         // Check if we're saving an article
         $allowed_contexts = ["com_content.article", "com_content.form"];
 
@@ -307,7 +316,8 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Check for tags and set keywords to tags list
         $new_tags = [];
-        for ($tag_id=0; $tag_id < sizeof($data['tags']); $tag_id++) {
+        $size = sizeof([$data['tags']]);
+        for ($tag_id=0; $tag_id < $size; $tag_id++) {
             $tag = $data['tags'][$tag_id];
             if (str_starts_with($tag, "#new#")) {
                 array_push($new_tags, substr($tag, 5));
@@ -324,6 +334,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             $article->setError(
                 "No tag has been set!",
             );
+            $this->print_time($begin_time);
             return false;
         } else {
             $article->metakey = $tags;
@@ -349,8 +360,17 @@ class plgContentAutomaticIntroImage extends JPlugin
                 ),
                 "error"
             );
-            return true;
+            $this->print_time($begin_time);
+            return false;
         }
+
+        $check_timestamp = hrtime(true);
+        $checks_time = ($check_timestamp - $begin_time)/1e+9;
+        Factory::getApplication()->enqueueMessage(
+            "Time to perform all checks: {$checks_time} seconds",
+            "message"
+        );
+
 
         // Create thumb directory
         if ($this->params->get("AbsoluteDir") == 1) {
@@ -363,11 +383,19 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Convert all images to webp
         $dom = new DOMDocument();
         if ($article->introtext === ""):
+            $this->print_time($begin_time);
             return true;
         endif;
         $article->introtext = preg_replace("/><\//", "> </", $article->introtext);
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $article->introtext);
         $all_images = $dom->getElementsByTagName("img");
+
+        $loadhtml_timestamp = hrtime(true);
+        $loadhtml_time = ($loadhtml_timestamp - $check_timestamp)/1e+9;
+        Factory::getApplication()->enqueueMessage(
+            "Time to parse content: {$loadhtml_time} seconds",
+            "message"
+        );
 
         // Convert and create thumbnails
         if (true) {
@@ -378,7 +406,8 @@ class plgContentAutomaticIntroImage extends JPlugin
             $only_moved = false;
             $nb_miniatures = 0;
             if (count($all_images) > 0) {
-                for ($i = 0; $i < sizeof($all_images); $i++) {
+                $size = sizeof($all_images);
+                for ($i = 0; $i < $size; $i++) {
                     $image_location = urldecode(
                         $all_images->item($i)->getAttribute("src")
                     );
@@ -414,6 +443,13 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $article->introtext = $to_store;
             }
 
+            $convert_timestamp = hrtime(true);
+            $convert_time = ($convert_timestamp - $loadhtml_timestamp)/1e+9;
+            Factory::getApplication()->enqueueMessage(
+                "Time to convert all images: {$convert_time} seconds",
+                "message"
+            );
+
             // If a fulltext image exists, create thumbnails but do not modify
             $write_json = false;
             if (isset($images->image_fulltext) and $images->image_fulltext !== '') {
@@ -429,7 +465,7 @@ class plgContentAutomaticIntroImage extends JPlugin
 
                 if ($return_val) {
                     $postfix = preg_replace(
-                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                        "/(\.jpg)|(\.png)|(\.jpeg)|(\.gif)$/",
                        ".webp", $postfix);
 
                     $images->image_fulltext = $output_link . $postfix;
@@ -440,6 +476,13 @@ class plgContentAutomaticIntroImage extends JPlugin
                     $write_json = true;
                 }
             }
+
+            $fulltext_timestamp = hrtime(true);
+            $fulltext_time = ($fulltext_timestamp - $convert_timestamp)/1e+9;
+            Factory::getApplication()->enqueueMessage(
+                "Time to convert fulltext image: {$fulltext_time} seconds",
+                "message"
+            );
 
             // If an intro image exists, convert it to a thumb and set it if this was not already the case
             if (isset($images->image_intro) and $images->image_intro !== '') {
@@ -463,7 +506,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                     $postfix = "#joomlaImage://local-image/" .
                             $output_link . "/?width={$x}&height={$y}";
                     $postfix = preg_replace(
-                        "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+                        "/(\.jpg)|(\.png)|(\.jpeg)|(\.gif)$/",
                         ".webp", $postfix);
 
                     $images->image_intro = $output_link . $postfix;
@@ -510,6 +553,7 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         if ($this->params->get("UseFirstImage") == 1) {
             if ($article->introtext === "") {
+                $this->print_time($begin_time);
                 return true;
             }
             if (count($all_images) > 0) {
@@ -521,6 +565,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $images->image_fulltext === ''
             ) {
                 if (count($all_images) === 0) {
+                    $this->print_time($begin_time);
                     return true;
                 }
                 $images->image_fulltext = $src_img;
@@ -541,6 +586,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 !isset($images->image_fulltext) or
                 $images->image_fulltext === ''
             ) {
+                $this->print_time($begin_time);
                 return true;
             }
             $src_img = $images->image_fulltext;
@@ -553,6 +599,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
                 "notice"
             );
+            $this->print_time($begin_time);
             return true;
         }
 
@@ -576,10 +623,17 @@ class plgContentAutomaticIntroImage extends JPlugin
             "message"
         );
 
+        $intro_timestamp = hrtime(true);
+        $intro_time = ($intro_timestamp - $fulltext_timestamp)/1e+9;
+        Factory::getApplication()->enqueueMessage(
+            "Time to resize intro image: {$intro_time} seconds",
+            "message"
+        );
+
         $images->image_intro = $src_img;
         $images->image_intro_alt = $src_alt;
         $article->images = json_encode($images);
-
+        $this->print_time($begin_time);
         return true;
     }
 
