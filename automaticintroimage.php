@@ -161,6 +161,8 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Create resized image
         $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
+        $real_width = $thumb->getImageWidth();
+        $real_height = $thumb->getImageHeight();
         if ($crop):
             if ($thumb->getImageWidth() > $thumb->getImageHeight()):
                 $thumb->scaleImage(0, $width);
@@ -180,10 +182,12 @@ class plgContentAutomaticIntroImage extends JPlugin
                 );
             endif;
         else:
-            if ($thumb->getImageWidth() > $thumb->getImageHeight()):
+            if ($thumb->getImageWidth() > $thumb->getImageHeight() and $real_width > $width):
                 $thumb->scaleImage($width, 0);
             else:
-                $thumb->scaleImage(0, $width*9/16);
+                if ($thumb->getImageHeight() > $thumb->getImageWidth() and $real_height > $width*9/16):
+                    $thumb->scaleImage(0, $width*9/16);
+                endif;
             endif;
         endif;
         if (isset($x)):
@@ -235,7 +239,7 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Write resized image if it doesn't exist
         // and set Joomla object values
-        if (!file_exists($thumb_savepath)) {
+        if ((!file_exists($thumb_savepath)) or filemtime($thumb_savepath) < filemtime($file_path)) {
             $thumb->writeImage($thumb_savepath);
             $nb_miniatures++;
         }
@@ -245,10 +249,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
     private function print_time($begin_time) {
         $total_time = (hrtime(true) - $begin_time)/1e+9;
-        Factory::getApplication()->enqueueMessage(
-            "Time to convert all images: {$total_time} seconds",
-            "message"
-        );
+        // Factory::getApplication()->enqueueMessage(
+        //     "Time to convert all images: {$total_time} seconds",
+        //     "message"
+        // );
     }
 
     private function createAllThumbnails($image_location, &$nb_miniatures) {
@@ -366,10 +370,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         $check_timestamp = hrtime(true);
         $checks_time = ($check_timestamp - $begin_time)/1e+9;
-        Factory::getApplication()->enqueueMessage(
-            "Time to perform all checks: {$checks_time} seconds",
-            "message"
-        );
+        // Factory::getApplication()->enqueueMessage(
+        //     "Time to perform all checks: {$checks_time} seconds",
+        //     "message"
+        // );
 
 
         // Create thumb directory
@@ -392,10 +396,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         $loadhtml_timestamp = hrtime(true);
         $loadhtml_time = ($loadhtml_timestamp - $check_timestamp)/1e+9;
-        Factory::getApplication()->enqueueMessage(
-            "Time to parse content: {$loadhtml_time} seconds",
-            "message"
-        );
+        // Factory::getApplication()->enqueueMessage(
+        //     "Time to parse content: {$loadhtml_time} seconds",
+        //     "message"
+        // );
 
         // Convert and create thumbnails
         if (true) {
@@ -445,10 +449,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
             $convert_timestamp = hrtime(true);
             $convert_time = ($convert_timestamp - $loadhtml_timestamp)/1e+9;
-            Factory::getApplication()->enqueueMessage(
-                "Time to convert all images: {$convert_time} seconds",
-                "message"
-            );
+            // Factory::getApplication()->enqueueMessage(
+            //     "Time to convert all images: {$convert_time} seconds",
+            //     "message"
+            // );
 
             // If a fulltext image exists, create thumbnails but do not modify
             $write_json = false;
@@ -479,10 +483,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
             $fulltext_timestamp = hrtime(true);
             $fulltext_time = ($fulltext_timestamp - $convert_timestamp)/1e+9;
-            Factory::getApplication()->enqueueMessage(
-                "Time to convert fulltext image: {$fulltext_time} seconds",
-                "message"
-            );
+            // Factory::getApplication()->enqueueMessage(
+            //     "Time to convert fulltext image: {$fulltext_time} seconds",
+            //     "message"
+            // );
 
             // If an intro image exists, convert it to a thumb and set it if this was not already the case
             if (isset($images->image_intro) and $images->image_intro !== '') {
@@ -625,10 +629,10 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         $intro_timestamp = hrtime(true);
         $intro_time = ($intro_timestamp - $fulltext_timestamp)/1e+9;
-        Factory::getApplication()->enqueueMessage(
-            "Time to resize intro image: {$intro_time} seconds",
-            "message"
-        );
+        // Factory::getApplication()->enqueueMessage(
+        //     "Time to resize intro image: {$intro_time} seconds",
+        //     "message"
+        // );
 
         $images->image_intro = $src_img;
         $images->image_intro_alt = $src_alt;
