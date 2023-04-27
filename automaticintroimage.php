@@ -145,6 +145,51 @@ class plgContentAutomaticIntroImage extends JPlugin
             return false;
         }
 
+        $extension_pos = strrpos($file_path, ".");
+        $image_with_suffix =
+            substr($file_path, 0, $extension_pos) .
+            $suffix .
+            substr($file_path, $extension_pos);
+
+        // Put the image in an absolute directory if said to do so
+        if ($this->params->get("AbsoluteDir") == 1) {
+            $thumb_dir = JPATH_ROOT . "/" . $this->params->get("AbsDirPath");
+            $subdir_pos = strrpos($image_with_suffix, "/");
+            $thumb_savepath =
+                $thumb_dir . substr($image_with_suffix, $subdir_pos);
+        }
+        // Put the image in a subdir if set to do so
+        elseif ($this->params->get("PutInSubdir") == 1) {
+            $subdir_pos = strrpos($image_with_suffix, "/");
+            $save_rel_location =
+                substr($image_with_suffix, 0, $subdir_pos) .
+                "/" .
+                $this->params->get("Subdir") .
+                substr($image_with_suffix, $subdir_pos);
+
+            // Check if the subdir already exist or create it
+            $img_subdir =
+                JPATH_ROOT .
+                "/" .
+                substr(
+                    $image_with_suffix,
+                    0,
+                    strrpos($image_with_suffix, "/")
+                );
+            if (!JFolder::exists($img_subdir)) {
+                JFolder::create($img_subdir);
+            }
+            $thumb_savepath = JPATH_ROOT . "/" . $save_rel_location;
+        } else {
+            $thumb_savepath = JPATH_ROOT . "/" . $image_with_suffix;
+        }
+
+        // Write resized image if it doesn't exist
+        // and set Joomla object values
+        if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime($file_path)):
+            return true;
+        endif;
+
         $compression_level = (int) $this->params->get("ImageQuality");
         if (
             $compression_level < 50 or
@@ -198,51 +243,8 @@ class plgContentAutomaticIntroImage extends JPlugin
         endif;
         $thumb->setImageCompressionQuality($compression_level);
         $thumb->setInterlaceScheme(Imagick::INTERLACE_PLANE);
-        $extension_pos = strrpos($file_path, ".");
-        $image_with_suffix =
-            substr($file_path, 0, $extension_pos) .
-            $suffix .
-            substr($file_path, $extension_pos);
-
-        // Put the image in an absolute directory if said to do so
-        if ($this->params->get("AbsoluteDir") == 1) {
-            $thumb_dir = JPATH_ROOT . "/" . $this->params->get("AbsDirPath");
-            $subdir_pos = strrpos($image_with_suffix, "/");
-            $thumb_savepath =
-                $thumb_dir . substr($image_with_suffix, $subdir_pos);
-        }
-        // Put the image in a subdir if set to do so
-        elseif ($this->params->get("PutInSubdir") == 1) {
-            $subdir_pos = strrpos($image_with_suffix, "/");
-            $save_rel_location =
-                substr($image_with_suffix, 0, $subdir_pos) .
-                "/" .
-                $this->params->get("Subdir") .
-                substr($image_with_suffix, $subdir_pos);
-
-            // Check if the subdir already exist or create it
-            $img_subdir =
-                JPATH_ROOT .
-                "/" .
-                substr(
-                    $image_with_suffix,
-                    0,
-                    strrpos($image_with_suffix, "/")
-                );
-            if (!JFolder::exists($img_subdir)) {
-                JFolder::create($img_subdir);
-            }
-            $thumb_savepath = JPATH_ROOT . "/" . $save_rel_location;
-        } else {
-            $thumb_savepath = JPATH_ROOT . "/" . $image_with_suffix;
-        }
-
-        // Write resized image if it doesn't exist
-        // and set Joomla object values
-        if ((!file_exists($thumb_savepath)) or filemtime($thumb_savepath) < filemtime($file_path)) {
-            $thumb->writeImage($thumb_savepath);
-            $nb_miniatures++;
-        }
+        $thumb->writeImage($thumb_savepath);
+        $nb_miniatures++;
 
         return true;
     }
