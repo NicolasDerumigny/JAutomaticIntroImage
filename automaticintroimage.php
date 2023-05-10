@@ -35,7 +35,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             preg_replace(
                 "/-thumb\./",
                 "_thumb.",
-                preg_replace("/_/", "-", $image_location)
+                preg_replace("/[_ ]/", "-", $image_location)
             )
         );
         $image_location = JPATH_ROOT . "/" . $image_location;
