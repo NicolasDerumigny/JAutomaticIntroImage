@@ -392,7 +392,8 @@ class plgContentAutomaticIntroImage extends JPlugin
             $this->print_time($begin_time);
             return true;
         endif;
-        $article->introtext = preg_replace("/><\//", "> </", $article->introtext);
+        $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
+        $article->introtext = str_replace("></", "> </", $article->introtext);
         $dom->loadHTML('<?xml encoding="utf-8" ?>' . $article->introtext);
         $all_images = $dom->getElementsByTagName("img");
 
