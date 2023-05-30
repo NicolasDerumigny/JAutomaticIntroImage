@@ -22,6 +22,21 @@ class plgContentAutomaticIntroImage extends JPlugin
      */
     protected $autoloadLanguage = true;
 
+    private function isWebpAnimated($src) {
+        $webpContents = file_get_contents($src);
+        $where = strpos($webpContents, "ANMF");
+        if ($where !== FALSE){
+            // animated
+            $isAnimated = true;
+        }
+        else{
+            // non animated
+            $isAnimated = false;
+        }
+        return $isAnimated;
+    }
+
+
     private function convertAndDeleteImage(&$image_location, &$nb_converted, &$nb_moved, &$output_link, &$only_moved) {
         $only_moved = false;
         $output_link = $image_location;
@@ -189,6 +204,12 @@ class plgContentAutomaticIntroImage extends JPlugin
         if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime($file_path)):
             return true;
         endif;
+
+        if ($this->isWebpAnimated($file_path)) {
+            copy($file_path, $thumb_savepath);
+            $nb_miniatures++;
+            return true;
+        }
 
         $compression_level = (int) $this->params->get("ImageQuality");
         if (
