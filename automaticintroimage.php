@@ -120,7 +120,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $output = null;
                 $retval = null;
                 exec(
-                    "convert {$image_location} {$output_location}",
+                    "convert \"{$image_location}\" \"{$output_location}\"",
                     $output,
                     $retval
                 ); // PHP version does not support gif.
