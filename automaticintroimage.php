@@ -141,10 +141,15 @@ class plgContentAutomaticIntroImage extends JPlugin
     }
 
     private function stripAccents($str) {
+        $unwanted_array = array(
+            'à' => 'a', 'á' => 'a', 'â' => 'a', 'ã' => 'a', 'ä' => 'a', 'ç' => 'c', 'è' => 'e', 'é' => 'e', 'ê' => 'e', 'ë' => 'e', 'ì' => 'i', 'í' => 'i', 'î' => 'i', 'ï' => 'i', 'ñ' => 'n', 'ò' => 'o', 'ó' => 'o', 'ô' => 'o', 'õ' => 'o', 'ö' => 'o', 'ù' => 'u', 'ú' => 'u', 'û' => 'u', 'ü' => 'u', 'ý' => 'y', 'ÿ' => 'y', 'À' => 'a', 'Á' => 'a', 'Â' => 'a', 'Ã' => 'a', 'Ä' => 'a', 'Ç' => 'c', 'È' => 'e', 'É' => 'e', 'Ê' => 'e', 'Ë' => 'e', 'Ì' => 'i', 'Í' => 'i', 'Î' => 'i', 'Ï' => 'i', 'Ñ' => 'n', 'Ò' => 'o', 'Ó' => 'o', 'Ô' => 'o', 'Õ' => 'o', 'Ö' => 'o', 'Ù' => 'u', 'Ú' => 'u', 'Û' => 'u', 'Ü' => 'u', 'Ý' => 'y', '€' => 'e', '$' => 'd'
+        );
+
+        $str = strtr($str,  $unwanted_array);
         $str = preg_replace("/[•,;!?:\"'><]/", "", $str);
         $str = preg_replace("/[  ]/", "-", $str); // Non-breaking space
         $str = preg_replace("/--/", "-", $str);
-        return strtr(utf8_decode($str), utf8_decode('àáâãäçèéêëìíîïñòóôõöùúûüýÿÀÁÂÃÄÇÈÉÊËÌÍÎÏÑÒÓÔÕÖÙÚÛÜÝ€$'), 'aaaaaceeeeiiiinooooouuuuyyAAAAACEEEEIIIINOOOOOUUUUYed');
+        return $str;
     }
 
     // Convert an input webp image to a webp image with same proportion with width `width`
@@ -668,7 +673,7 @@ class plgContentAutomaticIntroImage extends JPlugin
     // Forward options to TinyMCE
     public function onBeforeRender() {
         $input = Factory::getApplication()->input;
-        $doc = JFactory::getDocument();
+        $doc = Factory::getDocument();
         $editorOptions = $doc->getScriptOptions('plg_editor_tinymce');
 
         if(empty($editorOptions['tinyMCE'])) {
