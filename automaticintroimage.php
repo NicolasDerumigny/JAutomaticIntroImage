@@ -23,17 +23,23 @@ class plgContentAutomaticIntroImage extends JPlugin
     protected $autoloadLanguage = true;
 
     private function isWebpAnimated($src) {
-        $webpContents = file_get_contents($src);
-        $where = strpos($webpContents, "ANMF");
-        if ($where !== FALSE){
-            // animated
-            $isAnimated = true;
+        $result = false;
+        $fh = fopen($src, "rb");
+        if ($fh === false) {
+            Factory::getApplication()->enqueueMessage(
+                "Could not open {$src}",
+                "error"
+            );
+            return false;
         }
-        else{
-            // non animated
-            $isAnimated = false;
+        fseek($fh, 12);
+        if(fread($fh, 4) === 'VP8X'){
+          fseek($fh, 20);
+          $myByte = fread($fh, 1);
+          $result = ((ord($myByte) >> 1) & 1);
         }
-        return $isAnimated;
+        fclose($fh);
+        return $result;
     }
 
 
