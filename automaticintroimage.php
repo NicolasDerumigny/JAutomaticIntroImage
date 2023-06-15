@@ -121,7 +121,13 @@ class plgContentAutomaticIntroImage extends JPlugin
                     imagealphablending($image, true);
                     imagesavealpha($image, true);
                 }
-                imagewebp($image, $output_location, 80); //TODO: configure quality level
+                $retval = imagewebp($image, $output_location, 80); //TODO: configure quality level
+                if ($retval != true) {
+                    Factory::getApplication()->enqueueMessage(
+                        "Error saving webp image to {$output_location}"
+                    );
+                    return false;
+                }
             } else {
                 $output = null;
                 $retval = null;
@@ -210,16 +216,18 @@ class plgContentAutomaticIntroImage extends JPlugin
             $thumb_savepath = JPATH_ROOT . "/" . $image_with_suffix;
         }
 
-        // Write resized image if it doesn't exist
-        // and set Joomla object values
-        if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime($file_path)):
-            return true;
-        endif;
+        if (file_exists(JPATH_ROOT . "/" . $file_path)) {
+            // Write resized image if it doesn't exist
+            // and set Joomla object values
+            if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path)) {
+                return true;
+            }
 
-        if ($this->isWebpAnimated($file_path)) {
-            copy($file_path, $thumb_savepath);
-            $nb_miniatures++;
-            return true;
+            if ($this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
+                copy(JPATH_ROOT . "/" . $file_path, $thumb_savepath);
+                $nb_miniatures++;
+                return true;
+            }
         }
 
         $compression_level = (int) $this->params->get("ImageQuality");
@@ -419,14 +427,14 @@ class plgContentAutomaticIntroImage extends JPlugin
         }
 
         // Convert all images to webp
-        $dom = new DOMDocument();
+        $dom = new DOMDocument("1.0", "utf-8");
         if ($article->introtext === ""):
             $this->print_time($begin_time);
             return true;
         endif;
         $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
         $article->introtext = str_replace("></", "> </", $article->introtext);
-        $dom->loadHTML('<?xml encoding="utf-8" ?>' . $article->introtext);
+        $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $all_images = $dom->getElementsByTagName("img");
 
         $loadhtml_timestamp = hrtime(true);
@@ -473,12 +481,11 @@ class plgContentAutomaticIntroImage extends JPlugin
                     }
                 }
 
-                // Remove the <html><body>
-                $to_store = preg_replace(
-                    "!</?body>!",
-                    "",
-                    $dom->saveXML($dom->documentElement->firstChild)
-                );
+                // Remove the wrapper
+                $to_store = "";
+                foreach ($dom->documentElement->childNodes as $node) {
+                    $to_store .= $dom->saveXML($node);
+                }
                 $article->introtext = $to_store;
             }
 
