@@ -435,6 +435,20 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
         $article->introtext = str_replace("></", "> </", $article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
+        $paragraphs = $dom->getElementsByTagName('p');
+        for ($i=0; $i < $paragraphs->length; $i++) {
+            $p = $paragraphs->item($i);
+            $class_name = $p->getAttribute("class");
+            if (str_contains($class_name, "lightbox") || str_contains($class_name, "insert_multiple_images")) {
+                $new_content = strip_tags($p->C14N(), ["<p>", "<img>"]);
+                $fragment = $dom->createDocumentFragment();
+                $tmp_dom = new DOMDocument("1.0", "utf-8");
+                $tmp_dom->loadXML($new_content);
+                $new_node = $tmp_dom->firstElementChild;
+                $new_node = $dom->importNode($new_node, true);
+                $p->parentNode->replaceChild($new_node, $p);
+            }
+        }
         $all_images = $dom->getElementsByTagName("img");
 
         $loadhtml_timestamp = hrtime(true);
@@ -515,7 +529,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                        ".webp", $postfix);
 
                     $images->image_fulltext = $output_link . $postfix;
-                    factory::getapplication()->enqueuemessage(
+                    Factory::getApplication()->enqueueMessage(
                         "successfully converted existing article image to webp",
                         "message"
                     );
