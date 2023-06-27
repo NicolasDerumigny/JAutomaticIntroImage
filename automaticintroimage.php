@@ -53,11 +53,7 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Normalize name
         $output_link = strtolower(
-            preg_replace(
-                "/-thumb\./",
-                "_thumb.",
-                preg_replace("/[_ ]/", "-", $image_location)
-            )
+            preg_replace("/[_ ]/", "-", $image_location)
         );
         $image_location = JPATH_ROOT . "/" . $image_location;
         $output_location = JPATH_ROOT . "/" . $output_link;
