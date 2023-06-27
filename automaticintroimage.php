@@ -436,6 +436,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             $p = $paragraphs->item($i);
             $class_name = $p->getAttribute("class");
             if (str_contains($class_name, "lightbox") || str_contains($class_name, "insert_multiple_images")) {
+                $p->setAttribute("class", str_replace("legende", "", $class_name));
                 $new_content = strip_tags($p->C14N(), ["<p>", "<img>"]);
                 $fragment = $dom->createDocumentFragment();
                 $tmp_dom = new DOMDocument("1.0", "utf-8");
