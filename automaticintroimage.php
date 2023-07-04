@@ -245,18 +245,18 @@ class plgContentAutomaticIntroImage extends JPlugin
         $real_width = $thumb->getImageWidth();
         $real_height = $thumb->getImageHeight();
         if ($crop):
-            if ($thumb->getImageWidth() > $thumb->getImageHeight()):
+            if ($thumb->getImageWidth() > 1.25*$thumb->getImageHeight()):
                 $thumb->scaleImage(0, $width);
                 $thumb->cropImage(
+                    1.25*$width,
                     $width,
-                    $width,
-                    ($thumb->getImageWidth() - $width) / 2,
+                    ($thumb->getImageWidth() - 1.25*$width) / 2,
                     0
                 );
            else:
-                $thumb->scaleImage($width, 0);
+                $thumb->scaleImage(1.25*$width, 0);
                 $thumb->cropImage(
-                    $width,
+                    $width*1.25,
                     $width,
                     0,
                     ($thumb->getImageHeight() - $width) / 2
