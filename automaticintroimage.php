@@ -216,12 +216,26 @@ class plgContentAutomaticIntroImage extends JPlugin
             // Write resized image if it doesn't exist
             // and set Joomla object values
             if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path)) {
+                $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
+                if (isset($x)):
+                    $x = $thumb->getImageWidth();
+                endif;
+                if (isset($y)):
+                    $y = $thumb->getImageHeight();
+                endif;
                 return true;
             }
 
             if ($this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
                 copy(JPATH_ROOT . "/" . $file_path, $thumb_savepath);
                 $nb_miniatures++;
+                $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
+                if (isset($x)):
+                    $x = $thumb->getImageWidth();
+                endif;
+                if (isset($y)):
+                    $y = $thumb->getImageHeight();
+                endif;
                 return true;
             }
         }
@@ -237,7 +251,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 ),
                 "error"
             );
-            return true;
+            return false;
         }
 
         // Create resized image
@@ -544,29 +558,20 @@ class plgContentAutomaticIntroImage extends JPlugin
             // If an intro image exists, convert it to a thumb and set it if this was not already the case
             if (isset($images->image_intro) and $images->image_intro !== '') {
                 $image = $images->image_intro;
-                $postfix = preg_replace("/^(.*)(#.*)$/", "\\2", $image);
                 $image_path = preg_replace("/^(.*)(#.*)$/", "\\1", $image);
-                if (!str_contains($image, '#')) {
-                    $postfix = "";
-                }
                 if (!str_contains($image, "_thumb.webp")) {
                     $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
                     $x = 0;
                     $y = 0;
                     $this->resizeWebp($output_link, 450, "_thumb", $nb_miniatures, $x, $y, true);
-                    //FIXME: may be not set
+                    // TODO: may not be set
                     $output_link = "/" . $this->params->get("AbsDirPath") . "/" .
                         preg_replace(
                             "/\.webp/",
                             "_thumb.webp",
-                            basename($image_path));
-                    $postfix = "#joomlaImage://local-image/" .
-                            $output_link . "/?width={$x}&height={$y}";
-                    $postfix = preg_replace(
-                        "/(\.jpg)|(\.png)|(\.jpeg)|(\.gif)$/",
-                        ".webp", $postfix);
+                            basename($output_link));
 
-                    $images->image_intro = $output_link . $postfix;
+                    $images->image_intro = $output_link;
                     Factory::getApplication()->enqueueMessage(
                         "Successfully converted existing introduction image to webp",
                         "message"
