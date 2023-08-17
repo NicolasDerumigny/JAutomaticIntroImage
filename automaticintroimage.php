@@ -81,13 +81,13 @@ class plgContentAutomaticIntroImage extends JPlugin
         }
 
         $output_link = preg_replace(
-            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+            "/(\.jpg)|(\.png)|(\.jpeg)|(\.gif)$/",
             ".webp",
             $output_link
         );
 
         $output_location = preg_replace(
-            "/(\.jpg)|(\.png)|(\.jpeg)$|(\.gif)/",
+            "/(\.jpg)|(\.png)|(\.jpeg)|(\.gif)$/",
             ".webp",
             $output_location
         );
@@ -444,6 +444,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         endif;
         $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
         $article->introtext = str_replace("></", "> </", $article->introtext);
+        $article->introtext = str_replace(" <img", "<img", $article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
