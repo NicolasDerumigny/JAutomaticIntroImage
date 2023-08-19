@@ -338,6 +338,11 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Set creation date to publication date
         $article->created = $article->publish_up;
 
+        // Auto-insert non-breaking space
+        $article->title = str_replace(" :", " :", $article->title);
+        $article->title = str_replace(" $", " $", $article->title);
+        $article->title = str_replace(" €", " €", $article->title);
+
         // Check for meta description
         if ($article->metadesc == "") {
             $article->setError("No meta description!");
@@ -445,6 +450,8 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
         $article->introtext = str_replace("></", "> </", $article->introtext);
         $article->introtext = str_replace(" <img", "<img", $article->introtext);
+        $article->introtext = str_replace(" :", " :", $article->introtext);
+        $article->introtext = str_replace(" </", "</", $article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
