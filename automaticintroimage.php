@@ -344,6 +344,9 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->title = str_replace(" €", " €", $article->title);
         $article->title = str_replace(" !", " !", $article->title);
         $article->title = str_replace(" ?", " ?", $article->title);
+        // Twice to cover all cases
+        $article->title = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->title);
+        $article->title = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->title);
 
         // Check for meta description
         if ($article->metadesc == "") {
@@ -458,6 +461,9 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->introtext = str_replace(" !", " !", $article->introtext);
         $article->introtext = str_replace(" ?", " ?", $article->introtext);
         $article->introtext = str_replace(" </", "</", $article->introtext);
+        // Twice to cover all cases
+        $article->introtext = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->introtext);
+        $article->introtext = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
