@@ -160,6 +160,19 @@ class plgContentAutomaticIntroImage extends JPlugin
         return $str;
     }
 
+    private function formatFrench($str) {
+        $out = str_replace(" :", " :", $str);
+        $out = str_replace(" $", " $", $out);
+        $out = str_replace(" €", " €", $out);
+        $out = str_replace(" !", " !", $out);
+        $out = str_replace(" ?", " ?", $out);
+        $out = str_replace(" </", "</", $out);
+        // Twice to cover all cases
+        $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
+        $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
+        return $out;
+    }
+
     // Convert an input webp image to a webp image with same proportion with width `width`
     // and suffix `suffix` (before extension). If the filename already contains the suffix,
     // do nothing
@@ -327,6 +340,12 @@ class plgContentAutomaticIntroImage extends JPlugin
         */
     public function onContentBeforeSave($context, $article, $isNew, $data)
     {
+        // Remove empty lines
+        if ($context == "com_engage.comment") {
+            $article->body = $this->formatFrench(preg_replace("/<p>\s*<\/p>/", "", $article->body));
+            return;
+        }
+
         $begin_time = hrtime(true);
         // Check if we're saving an article
         $allowed_contexts = ["com_content.article", "com_content.form"];
@@ -339,14 +358,8 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->created = $article->publish_up;
 
         // Auto-insert non-breaking space
-        $article->title = str_replace(" :", " :", $article->title);
-        $article->title = str_replace(" $", " $", $article->title);
-        $article->title = str_replace(" €", " €", $article->title);
-        $article->title = str_replace(" !", " !", $article->title);
-        $article->title = str_replace(" ?", " ?", $article->title);
-        // Twice to cover all cases
-        $article->title = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->title);
-        $article->title = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->title);
+        $article->title = $this->formatFrench($article->title);
+        $article->metadesc = $this->formatFrench($article->metadesc);
 
         // Check for meta description
         if ($article->metadesc == "") {
@@ -455,15 +468,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
         $article->introtext = str_replace("></", "> </", $article->introtext);
         $article->introtext = str_replace(" <img", "<img", $article->introtext);
-        $article->introtext = str_replace(" :", " :", $article->introtext);
-        $article->introtext = str_replace(" $", " $", $article->introtext);
-        $article->introtext = str_replace(" €", " €", $article->introtext);
-        $article->introtext = str_replace(" !", " !", $article->introtext);
-        $article->introtext = str_replace(" ?", " ?", $article->introtext);
-        $article->introtext = str_replace(" </", "</", $article->introtext);
-        // Twice to cover all cases
-        $article->introtext = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->introtext);
-        $article->introtext = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $article->introtext);
+        $article->introtext = $this->formatFrench($article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
