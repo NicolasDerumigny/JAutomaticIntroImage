@@ -743,6 +743,8 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Always open in new tab
         $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
         $editorOptions['tinyMCE']['default']['paste_as_text'] = 'true';
+        $editorOptions['tinyMCE']['default']['table_header_type'] = 'cells';
+        $editorOptions['tinyMCE']['default']['table_toolbar'] = 'tableprops tabledelete | tablerowheader tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol';
         $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
     }
 }
