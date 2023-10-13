@@ -469,6 +469,10 @@ class plgContentAutomaticIntroImage extends JPlugin
         $article->introtext = str_replace("></", "> </", $article->introtext);
         $article->introtext = str_replace(" <img", "<img", $article->introtext);
         $article->introtext = $this->formatFrench($article->introtext);
+        $article->introtext = preg_replace(
+            '/<span class="mce-nbsp-wrap" contenteditable="false">[\s]*</',
+            '<span class="mce-nbsp-wrap" contenteditable="false"> <',
+            $article->introtext);
         $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
@@ -699,7 +703,7 @@ class plgContentAutomaticIntroImage extends JPlugin
                 "message"
            );
         }
-        $src_img = preg_replace("/.webp$/", "_thumb.webp", $src_img);
+        $src_img = preg_replace("/\.webp$/", "_thumb.webp", $src_img);
         // FIXME what about if not set?
         $thumb_dir = $this->params->get("AbsDirPath");
         $subdir_pos = strrpos($src_img, "/");
