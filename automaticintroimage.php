@@ -338,12 +338,12 @@ class plgContentAutomaticIntroImage extends JPlugin
         *
         * @return  boolean	True on success.
         */
-    public function onContentBeforeSave($context, $article, $isNew, $data)
+    public function onContentBeforeSave($context, &$article, $isNew, &$data)
     {
         // Remove empty lines
         if ($context == "com_engage.comment") {
-            $article->body = $this->formatFrench(preg_replace("/<p>\s*<\/p>/", "", $article->body));
-            return;
+            $article->body = preg_replace("/<p>\s*<\/p>/", "", $this->formatFrench($article->body));
+            return true;
         }
 
         $begin_time = hrtime(true);
@@ -740,14 +740,19 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         if (!(($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit")) {
             // No popup menu
-            $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
             $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
+        } else {
+            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = 'bold italic underline strikethrough | subscript superscript | quicklink | h2 h3 h4 blockquote | tablemergecells';
         }
 
-        // Always open in new tab
+        // Additional options for the article editor
         $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
         $editorOptions['tinyMCE']['default']['paste_as_text'] = 'true';
         $editorOptions['tinyMCE']['default']['table_header_type'] = 'cells';
+        $editorOptions['tinyMCE']['default']['table_sizing_mode'] = 'responsive';
+        $editorOptions['tinyMCE']['default']['table_resize_bars'] = 'false';
+        $editorOptions['tinyMCE']['default']['object_resizing'] = 'img';
+        $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
         $editorOptions['tinyMCE']['default']['table_toolbar'] = 'tableprops tabledelete | tablerowheader tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol';
         $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
     }
