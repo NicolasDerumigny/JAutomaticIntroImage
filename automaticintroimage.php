@@ -480,7 +480,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             $class_name = $p->getAttribute("class");
             if ((str_contains($class_name, "lightbox") || str_contains($class_name, "insert_multiple_images") || str_contains($class_name, "comparaison-images")) && !(str_contains($class_name, "insert_image_"))) {
                 $p->setAttribute("class", str_replace("legende", "", $class_name));
-                $new_content = strip_tags($p->C14N(), ["<p>", "<img>", "<a>"]);
+                $new_content = strip_tags($p->C14N(), ["<p>", "<img>", "<a>", "<iframe>"]);
                 $fragment = $dom->createDocumentFragment();
                 $tmp_dom = new DOMDocument("1.0", "utf-8");
                 $tmp_dom->loadXML($new_content);
@@ -742,7 +742,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             // No popup menu
             $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
         } else {
-            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = 'bold italic underline strikethrough | subscript superscript | quicklink | h2 h3 h4 blockquote | tablemergecells';
+            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = 'bold italic underline strikethrough | subscript superscript | link | h2 h3 h4 blockquote | tablemergecells';
         }
 
         // Additional options for the article editor
