@@ -727,42 +727,5 @@ class plgContentAutomaticIntroImage extends JPlugin
         $this->print_time($begin_time);
         return true;
     }
-
-    // Forward options to TinyMCE
-    public function onBeforeRender() {
-        $input = Factory::getApplication()->input;
-        $doc = Factory::getDocument();
-        $editorOptions = $doc->getScriptOptions('plg_editor_tinymce');
-
-        if(empty($editorOptions['tinyMCE'])) {
-            return;
-        }
-
-        // Comments
-        if (!(($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit")) {
-            // No popup menu
-            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
-            // Custom injector, "e" is the argument name
-            $editorOptions['tinyMCE']['default']['init_instance_callback'] = 'e.getContainer().getElementsByClassName("tox-statusbar__wordcount")[0].click();';
-            $editorOptions['tinyMCE']['default']['setup'] = 'e.on("WordCountUpdate", () => {' .
-                'let wc = e.getContainer().getElementsByClassName("tox-statusbar__wordcount")[0];' .
-                'if (tinymce.activeEditor.plugins.wordcount.body.getCharacterCount() > 4000) {wc.classList.add("over-limit")} else {wc.classList.remove("over-limit");}' .
-                '});';
-            $editorOptions['tinyMCE']['default']['plugins'] .= ",paste";
-        } else {
-            $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = 'bold italic underline strikethrough | subscript superscript | link | h2 h3 h4 blockquote | tablemergecells';
-        }
-
-        // Additional options for the article editor
-        $editorOptions['tinyMCE']['default']['default_link_target'] = '_blank';
-        $editorOptions['tinyMCE']['default']['paste_as_text'] = 'true';
-        $editorOptions['tinyMCE']['default']['table_header_type'] = 'cells';
-        $editorOptions['tinyMCE']['default']['table_sizing_mode'] = 'responsive';
-        $editorOptions['tinyMCE']['default']['table_resize_bars'] = 'false';
-        $editorOptions['tinyMCE']['default']['object_resizing'] = 'img';
-        $editorOptions['tinyMCE']['default']['quickbars_insert_toolbar'] = '';
-        $editorOptions['tinyMCE']['default']['table_toolbar'] = 'tableprops tabledelete | tablerowheader tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol';
-        $doc->addScriptOptions('plg_editor_tinymce', $editorOptions);
-    }
 }
 ?>
