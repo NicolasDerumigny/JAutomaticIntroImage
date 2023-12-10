@@ -738,6 +738,7 @@ class plgContentAutomaticIntroImage extends JPlugin
             return;
         }
 
+        // Comments
         if (!(($input->get("view") == "form" or ($input->get("option") == "com_content" and $input->get("view") == "article")) and $input->get("layout") == "edit")) {
             // No popup menu
             $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = '';
@@ -746,7 +747,8 @@ class plgContentAutomaticIntroImage extends JPlugin
             $editorOptions['tinyMCE']['default']['setup'] = 'e.on("WordCountUpdate", () => {' .
                 'let wc = e.getContainer().getElementsByClassName("tox-statusbar__wordcount")[0];' .
                 'if (tinymce.activeEditor.plugins.wordcount.body.getCharacterCount() > 4000) {wc.classList.add("over-limit")} else {wc.classList.remove("over-limit");}' .
-              '});';
+                '});';
+            $editorOptions['tinyMCE']['default']['plugins'] .= ",paste";
         } else {
             $editorOptions['tinyMCE']['default']['quickbars_selection_toolbar'] = 'bold italic underline strikethrough | subscript superscript | link | h2 h3 h4 blockquote | tablemergecells';
         }
