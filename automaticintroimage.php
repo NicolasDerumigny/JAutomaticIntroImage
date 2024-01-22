@@ -117,7 +117,8 @@ class plgContentAutomaticIntroImage extends JPlugin
                     imagealphablending($image, true);
                     imagesavealpha($image, true);
                 }
-                $retval = imagewebp($image, $output_location, 80); //TODO: configure quality level
+                // Original -> webp image quality level is 95
+                $retval = imagewebp($image, $output_location, 95);
                 if ($retval != true) {
                     Factory::getApplication()->enqueueMessage(
                         "Error saving webp image to {$output_location}"
@@ -176,7 +177,7 @@ class plgContentAutomaticIntroImage extends JPlugin
     // Convert an input webp image to a webp image with same proportion with width `width`
     // and suffix `suffix` (before extension). If the filename already contains the suffix,
     // do nothing
-    private function resizeWebp($file_path, $width, $suffix, &$nb_miniatures, &$x = null, &$y = null, $crop = false) {
+    private function resizeWebp($file_path, $width, $suffix, &$nb_miniatures, &$x = null, &$y = null, $crop = false, $quality=80) {
         if (str_contains($file_path, $suffix . ".webp")) {
             return false;
         }
@@ -228,7 +229,10 @@ class plgContentAutomaticIntroImage extends JPlugin
         if (file_exists(JPATH_ROOT . "/" . $file_path)) {
             // Write resized image if it doesn't exist
             // and set Joomla object values
-            if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path)) {
+
+            // If it exist, and the modification date is after the original file
+            // and after the new portrait update
+            if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path) and filemtime($thumb_savepath) > 1705992073) {
                 $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
                 if (isset($x)):
                     $x = $thumb->getImageWidth();
@@ -251,20 +255,6 @@ class plgContentAutomaticIntroImage extends JPlugin
                 endif;
                 return true;
             }
-        }
-
-        $compression_level = (int) $this->params->get("ImageQuality");
-        if (
-            $compression_level < 50 or
-            $compression_level > 100
-        ) {
-            Factory::getApplication()->enqueueMessage(
-                JText::_(
-                    "PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_SETTINGS_ERROR"
-                ),
-                "error"
-            );
-            return false;
         }
 
         // Create resized image
@@ -290,11 +280,18 @@ class plgContentAutomaticIntroImage extends JPlugin
                 );
             endif;
         else:
-            if ($thumb->getImageWidth() > $thumb->getImageHeight() and $real_width > $width):
+            // Nearly square images
+            if ($thumb->getImageWidth() >= 0.9*$thumb->getImageHeight() and $real_width > $width):
                 $thumb->scaleImage($width, 0);
             else:
-                if ($thumb->getImageHeight() > $thumb->getImageWidth() and $real_height > $width*9/16):
-                    $thumb->scaleImage(0, $width*9/16);
+                // Resize portrait images for mobile:
+                // - images may take the whole screen (i.e. up to ~1000 px height)
+                // - "big" images (displayed on FHD landscape) will not span up more that the screen
+                // height (landscape !)
+                // Therefore, sub-1000px desireds height is scaled to 2*width, else to $resezied_height
+                $resized_height = min(2*$width, max($height, 1000));
+                if ($thumb->getImageHeight() > $thumb->getImageWidth() and $real_height > $resized_height):
+                    $thumb->scaleImage(0, $resized_height);
                 endif;
             endif;
         endif;
@@ -304,7 +301,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         if (isset($y)):
             $y = $thumb->getImageHeight();
         endif;
-        $thumb->setImageCompressionQuality($compression_level);
+        $thumb->setImageCompressionQuality($quality);
         $thumb->setInterlaceScheme(Imagick::INTERLACE_PLANE);
         $thumb->writeImage($thumb_savepath);
         $nb_miniatures++;
@@ -321,7 +318,8 @@ class plgContentAutomaticIntroImage extends JPlugin
     }
 
     private function createAllThumbnails($image_location, &$nb_miniatures) {
-        $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures);
+        $null = null;
+        $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures, $null, $null, false, 90);
         $this->resizeWebp($image_location, 1280, "_sd", $nb_miniatures);
         $this->resizeWebp($image_location, 450, "_mini", $nb_miniatures);
     }
