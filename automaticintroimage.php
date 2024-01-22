@@ -562,6 +562,8 @@ class plgContentAutomaticIntroImage extends JPlugin
                 $output_link = "";
                 $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
                 $this->createAllThumbnails($output_link, $nb_miniatures);
+                $null = null;
+                $this->resizeWebp($output_link, 450, "_thumb", $nb_miniatures, $null, $null, true);
 
                 if ($return_val) {
                     $postfix = preg_replace(
