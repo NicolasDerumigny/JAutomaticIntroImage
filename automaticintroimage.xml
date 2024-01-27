@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<extension version="3.2" type="plugin" group="content" method="upgrade">
+<extension version="4" type="plugin" group="content" method="upgrade">
         <name>Content - Automatic Intro Image</name>
-        <author>Steven Trooster</author>
+        <author>Steven Trooster and Nicolas Derumnigny</author>
         <creationDate>2022-09-16</creationDate>
         <copyright>Copyright (C) 2022 Steven Trooster. All rights reserved.</copyright>
         <license>GNU General Public License version 3 or later.</license>
-        <authorEmail>info@ghost-art.nl</authorEmail>
+        <authorEmail>nicolas.d@hardwareand.co</authorEmail>
         <version>1.4.2</version>
         <description>PLG_CONTENT_AUTOMATICINTROIMAGE_XML_DESCRIPTION</description>
         <files>
@@ -24,143 +24,13 @@
                 <fields name="params">
 
                         <fieldset name="name" label="PLG_CONTENT_AUTOMATICINTROIMAGE_FIELD_NAME_LABEL">
-                                <field name="Suffix" type="text"
-                                        default="_thumb"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_SUFFIX_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_SUFFIX_LABEL"
-                                        required="1"
-                                />
-
-                                <field name="UseFirstImage" type="radio"
-                                        default="0"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_USEFIRSTIMAGE_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_USEFIRSTIMAGE_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-
-                                <field name="AbsoluteDir" type="radio"
-                                        default="0"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_ABSOLUTEDIR_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_ABSOLUTEDIR_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-
                                 <field name="AbsDirPath" type="text"
                                         default="images/thumb"
                                         description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_ABSDIRPATH_DESCRIPTION"
                                         label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_ABSDIRPATH_LABEL"
                                         required="1"
-                                        showon="AbsoluteDir:1"
                                 />
-
-                                <field name="PutInSubdir" type="radio"
-                                        default="0"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_PUTSUBDIR_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_PUTSUBDIR_LABEL"
-                                        showon="AbsoluteDir:0"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-
-                                <field name="Subdir" type="text"
-                                        default="thumb"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_SUBDIR_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_SUBDIR_LABEL"
-                                        required="1"
-                                        showon="PutInSubdir:1[AND]AbsoluteDir:0"
-                                />
-                        </fieldset>
-
-                        <fieldset name="image" label="PLG_CONTENT_AUTOMATICINTROIMAGE_FIELD_IMAGE_LABEL">
-                                <field name="Width" type="number"
-                                        default="320"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_WIDTH_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_WIDTH_LABEL"
-                                        filter="integer"
-                                        min="10"
-                                        max="2000"
-                                        size="4"
-                                        required="1"
-                                />
-
-                                <field name="Height" type="number"
-                                        default="240"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_HEIGHT_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_HEIGHT_LABEL"
-                                        filter="integer"
-                                        min="10"
-                                        max="2000"
-                                        size="4"
-                                        required="1"
-                                />
-
-                                <field name="MaintainAspectRatio" type="radio"
-                                        default="1"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_RATIO_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_RATIO_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-                                <field name="Crop" type="radio"
-                                        default="1"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_CROP_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_CROP_LABEL"
-                                        showon="MaintainAspectRatio:0"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-
-                                <field name="ChangeImageQuality" type="radio"
-                                        default="0"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_CHGIMGQLTY_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_CHGIMGQLTY_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-
-                                <field name="ImageQuality" type="number"
-                                        default="92"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_IMGQLTY_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_IMGQLTY_LABEL"
-                                        filter="integer"
-                                        min="50"
-                                        max="100"
-                                        size="3"
-                                        required="1"
-                                        showon="ChangeImageQuality:1"
-                                />
-
-                                <field name="SetProgressiveJPG" type="radio"
-                                        default="1"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_PROGRESSIVE_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_PROGRESSIVE_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
-                        </fieldset>
-                        <fieldset name="misc" label="PLG_CONTENT_AUTOMATICINTROIMAGE_FIELD_MISC_LABEL">
-                                <field name="CopyAltTitle" type="radio"
-                                        default="1"
-                                        description="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_TEXT_DESCRIPTION"
-                                        label="PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_TEXT_LABEL"
-                                >
-                                        <option value="0">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_NO</option>
-                                        <option value="1">PLG_CONTENT_AUTOMATICINTROIMAGE_PARAM_YES</option>
-                                </field>
                         </fieldset>
                 </fields>
         </config>
-        <updateservers>
-                <!-- Note: No spaces or linebreaks allowed between the server tags -->
-                <server type="extension" name="Automatic Inro Image Update Site">https://raw.githubusercontent.com/stimpsonjcat/JAutomaticIntroImage/master/manifest.xml</server>
-        </updateservers>
 </extension>
