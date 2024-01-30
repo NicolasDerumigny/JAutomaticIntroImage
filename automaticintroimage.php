@@ -158,7 +158,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         $str = strtr($str,  $unwanted_array);
         $str = preg_replace("/[•,;!?:\"'><]/", "", $str);
         $str = preg_replace("/[  ]/", "-", $str); // Non-breaking space
-        $str = preg_replace("/--/", "-", $str);
+        $str = preg_replace("/-+/", "-", $str);
         return $str;
     }
 
