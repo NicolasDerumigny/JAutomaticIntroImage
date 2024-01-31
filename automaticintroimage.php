@@ -603,8 +603,13 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Write converted fulltext/intro image
         $article->images = json_encode($images);
 
-        // By default, use the first image, if existing
-        if (count($all_images) > 0) {
+        // Use fulltext, if existing
+        if ((isset($images->image_fulltext)) and $images->image_fulltext !== '') {
+            $src_img = $images->image_fulltext;
+            $src_alt = $images->image_fulltext_alt;
+            $src_img = preg_replace("/#.*$/", "", $src_img);
+        // else, use the first image, if existing
+        } else if (count($all_images) > 0) {
             $src_img = urldecode($all_images->item(0)->getAttribute("src"));
             $src_img = preg_replace("/#.*$/", "", $src_img);
             $src_alt = $all_images->item(0)->getAttribute("alt");
@@ -622,11 +627,6 @@ class plgContentAutomaticIntroImage extends JPlugin
                 );
             }
             $article->images = json_encode($images);
-        // Else, use fulltext, if existing
-        } else if ((isset($images->image_fulltext)) and $images->image_fulltext !== '') {
-            $src_img = $images->image_fulltext;
-            $src_alt = $images->image_fulltext_alt;
-            $src_img = preg_replace("/#.*$/", "", $src_img);
         // Else, give up
         } else {
             $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
