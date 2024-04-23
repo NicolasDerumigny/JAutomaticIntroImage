@@ -11,8 +11,11 @@ defined("_JEXEC") or die();
 use Joomla\CMS\Factory;
 use Joomla\CMS\Helper\TagsHelper;
 use Joomla\CMS\Categories\Categories;
+use Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Filesystem\Folder;
 
-class plgContentAutomaticIntroImage extends JPlugin
+class plgContentAutomaticIntroImage extends CMSPlugin
 {
     /**
      * Load the language file on instantiation. Note this is only available in Joomla 3.1 and higher.
@@ -61,8 +64,8 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         $folder = dirname($output_location);
 
-        if (!JFolder::exists($folder)) {
-            JFolder::create($folder);
+        if (!Folder::exists($folder)) {
+            Folder::create($folder);
         }
 
         if (
@@ -288,27 +291,27 @@ class plgContentAutomaticIntroImage extends JPlugin
     private function printConvertMessages($nb_converted, $nb_moved, $nb_miniatures) {
         if ($nb_converted == 0) {
             Factory::getApplication()->enqueueMessage(
-                //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
                 "Great! All images were already in webp format",
                 "message"
             );
         } else {
             Factory::getApplication()->enqueueMessage(
-                //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_WEBP_DONE"),
+                //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_WEBP_DONE"),
                 "{$nb_converted} image(s) successfully converted to webp",
                 "message"
             );
         }
         if ($nb_moved != 0) {
             Factory::getApplication()->enqueueMessage(
-                //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
                 "{$nb_moved} images have been renamed",
                 "info"
             );
         }
         if ($nb_miniatures != 0) {
             Factory::getApplication()->enqueueMessage(
-                //JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
+                //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
                 "{$nb_miniatures} images have been converted for lower resolutions",
                 "info"
             );
@@ -428,7 +431,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Check ImageMagick
         if (!extension_loaded("imagick")) {
             Factory::getApplication()->enqueueMessage(
-                JText::_(
+                Text::_(
                     "PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_IMAGICK_ERROR"
                 ),
                 "error"
@@ -447,8 +450,8 @@ class plgContentAutomaticIntroImage extends JPlugin
 
         // Create thumb directory
         $thumb_dir = JPATH_ROOT . "/" . $this->params->get("AbsDirPath");
-        if (!JFolder::exists($thumb_dir)) {
-            JFolder::create($thumb_dir);
+        if (!Folder::exists($thumb_dir)) {
+            Folder::create($thumb_dir);
         }
 
         // Convert all images to webp
@@ -465,7 +468,9 @@ class plgContentAutomaticIntroImage extends JPlugin
             '/<span class="mce-nbsp-wrap" contenteditable="false">[\s]*</',
             '<span class="mce-nbsp-wrap" contenteditable="false"> <',
             $article->introtext);
-        $dom->loadXML('<div id="parsing-wrapper">' . $article->introtext . '</div>');
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<meta charset="utf8">' . $article->introtext, LIBXML_HTML_NODEFDTD | LIBXML_HTML_NOIMPLIED);
+        libxml_clear_errors();
         $paragraphs = $dom->getElementsByTagName('p');
         for ($i=0; $i < $paragraphs->length; $i++) {
             $p = $paragraphs->item($i);
@@ -640,7 +645,7 @@ class plgContentAutomaticIntroImage extends JPlugin
         // Return if intro image is already set
         if (isset($images->image_intro) and $images->image_intro !== '') {
             Factory::getApplication()->enqueueMessage(
-                JText::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
+                Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
                 "notice"
             );
             $this->printTime($begin_time);
