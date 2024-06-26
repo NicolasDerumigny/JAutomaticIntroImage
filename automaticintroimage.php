@@ -172,7 +172,6 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         $out = str_replace(" €", " €", $out);
         $out = str_replace(" !", " !", $out);
         $out = str_replace(" ?", " ?", $out);
-        $out = str_replace(" </", "</", $out);
         // Twice to cover all cases
         $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
         $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
@@ -460,9 +459,6 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             $this->printTime($begin_time);
             return true;
         }
-        $article->introtext = str_replace("<![CDATA[ ]]>", "", $article->introtext);
-        $article->introtext = str_replace("></", "> </", $article->introtext);
-        $article->introtext = str_replace(" <img", "<img", $article->introtext);
         $article->introtext = $this->formatFrench($article->introtext);
         $article->introtext = preg_replace(
             '/<span class="mce-nbsp-wrap" contenteditable="false">[\s]*</',
@@ -533,7 +529,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             // Remove the wrapper
             $to_store = "";
             foreach ($dom->documentElement->childNodes as $node) {
-                $to_store .= $dom->saveXML($node);
+                $to_store .= $dom->saveHTML($node);
             }
             $article->introtext = $to_store;
         }
