@@ -48,6 +48,9 @@ class plgContentAutomaticIntroImage extends CMSPlugin
     }
 
 
+    // Normalize the name of avif / web images given as input, and convert to webp if the image is gif / jpg / png.
+    // Delete the original image afterwards
+    // Return true if an operation was performed
     private function convertAndDeleteImage($image_url, &$nb_converted, &$nb_moved, &$output_link, &$only_moved) {
         $only_moved = false;
         if (!str_starts_with($image_url, "images/")) {
@@ -71,8 +74,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         if (
             str_ends_with($image_location, ".webp") ||
             str_ends_with($image_location, ".svg") ||
-            str_ends_with($image_location, ".avif") ||
-            str_ends_with($image_location, ".ico")
+            str_ends_with($image_location, ".avif")
         ) {
             if ($output_location != $image_location) {
                 // Normalize name: move the image
@@ -178,12 +180,12 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         return $out;
     }
 
-    // Convert an input webp image to a webp image with same proportion with width `width`
+    // Convert an input webp/avif image to a webp/avif image with same proportion with width `width`
     // and suffix `suffix` (before extension). If the filename already contains the suffix,
     // do nothing
     // Fails in crop mode if the size is not sufficient. Copy the file in non-crop
     // mode if the size is not sufficient
-    private function resizeWebp($file_path, $dimensions, $suffix, &$nb_miniatures, $crop = false, $quality=80, $force_resize = false) {
+    private function resizeImage($file_path, $dimensions, $suffix, &$nb_miniatures, $crop = false, $quality=80, $force_resize = false) {
         if (is_array($dimensions)) {
             $width = $dimensions[0];
             $height = $dimensions[1];
@@ -191,7 +193,8 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             $width = $dimensions;
             $height = $dimensions;
         }
-        if (str_contains($file_path, $suffix . ".webp")) {
+
+        if (str_contains($file_path, $suffix . ".webp") || str_contains($file_path, $suffix . ".avif")) {
             return false;
         }
 
@@ -201,6 +204,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         }
 
         $extension_pos = strrpos($file_path, ".");
+        $extension = substr($file_path, $extension_pos);
         $image_with_suffix =
             substr($file_path, 0, $extension_pos) .
             $suffix .
@@ -217,17 +221,15 @@ class plgContentAutomaticIntroImage extends CMSPlugin
 
             // If it exist, and the modification date is after the original file
             // and after the new portrait update
-            if (file_exists($thumb_savepath) and filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path) and filemtime($thumb_savepath) > $this->timestampMin) {
-                $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
+            if (file_exists($thumb_savepath) && filemtime($thumb_savepath) > filemtime(JPATH_ROOT . "/" . $file_path) && filemtime($thumb_savepath) > $this->timestampMin) {
                 return true;
             }
+        }
 
-            if ($this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
-                copy(JPATH_ROOT . "/" . $file_path, $thumb_savepath);
-                $nb_miniatures++;
-                $thumb = new Imagick(JPATH_ROOT . "/" . $file_path);
-                return true;
-            }
+        if ($extension == "webp" && $this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
+            copy(JPATH_ROOT . "/" . $file_path, $thumb_savepath);
+            $nb_miniatures++;
+            return true;
         }
 
         // Create resized image
@@ -291,13 +293,13 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         if ($nb_converted == 0) {
             Factory::getApplication()->enqueueMessage(
                 //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_NO_WEBP_DONE"),
-                "Great! All images were already in webp format",
+                "Great! All images were already in webp / avif format",
                 "message"
             );
         } else {
             Factory::getApplication()->enqueueMessage(
                 //Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_WEBP_DONE"),
-                "{$nb_converted} image(s) successfully converted to webp",
+                "{$nb_converted} image(s) successfully converted to webp / avif",
                 "message"
             );
         }
@@ -318,9 +320,12 @@ class plgContentAutomaticIntroImage extends CMSPlugin
     }
 
     private function createAllThumbnails($image_location, &$nb_miniatures) {
-        $this->resizeWebp($image_location, 1920, "_fhd", $nb_miniatures, false, 90);
-        $this->resizeWebp($image_location, 1280, "_sd", $nb_miniatures);
-        $this->resizeWebp($image_location, 450, "_mini", $nb_miniatures);
+        if (str_ends_with($image_location, ".svg")) {
+            return;
+        }
+        $this->resizeImage($image_location, 1920, "_fhd", $nb_miniatures, false, 90);
+        $this->resizeImage($image_location, 1280, "_sd", $nb_miniatures);
+        $this->resizeImage($image_location, 450, "_mini", $nb_miniatures);
     }
 
     /**
@@ -453,7 +458,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             Folder::create($thumb_dir);
         }
 
-        // Convert all images to webp
+        // Convert all images to webp / avif
         $dom = new DOMDocument("1.0", "utf-8");
         if ($article->introtext === "") {
             $this->printTime($begin_time);
@@ -541,7 +546,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         //     "message"
         // );
 
-        // If a fulltext image exists, convert it to webp and create replicas
+        // If a fulltext image exists, convert it and create replicas
         $image_fulltext_written = false;
         if (isset($images->image_fulltext) and $images->image_fulltext !== '') {
             $image = $images->image_fulltext;
@@ -553,10 +558,8 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             $output_link = "";
             $return_val = $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
             $this->createAllThumbnails($output_link, $nb_miniatures);
-            // Fulltext -> Discover miniature too
-            $this->resizeWebp($output_link, [1500, 850], "_preview", $nb_miniatures, true);
-            // If pinned, then the "_thumb" image is also needed
-            $this->resizeWebp($output_link, [560, 450], "_thumb", $nb_miniatures, true, 80, true);
+            // fulltext image is also used as Discover
+            $this->resizeImage($output_link, [1500, 850], "_preview", $nb_miniatures, true);
 
             if ($return_val) {
                 $postfix = str_replace(
@@ -584,33 +587,53 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         if (isset($images->image_intro) and $images->image_intro !== '') {
             $image = $images->image_intro;
             $image_path = urldecode(preg_replace("/^(.*)(#.*)$/", "\\1", $image));
-            if (!str_contains($image, "_thumb.webp")) {
+            // The image is not a thumb
+            if (!str_contains($image, "_thumb")) {
                 $this->convertAndDeleteImage($image_path, $nb_converted, $nb_moved, $output_link, $only_moved);
                 // No need for further conversion for intro images (only thumb is used)
-                $this->resizeWebp($output_link, [560, 450], "_thumb", $nb_miniatures, true, 80, true);
+                $this->resizeImage($output_link, [560, 450], "_thumb", $nb_miniatures, true, 80, true);
                 $output_link = "/" . $this->params->get("AbsDirPath") . "/" .
-                    preg_replace(
-                        "/\.webp/",
-                        "_thumb.webp",
-                        basename($output_link));
+                    str_replace(
+                        ".avif",
+                        "_thumb.avif",
+                        str_replace(
+                            ".webp",
+                            "_thumb.webp",
+                            basename($output_link)
+                        )
+                    );
 
                 $images->image_intro = $output_link;
                 Factory::getApplication()->enqueueMessage(
-                    "Successfully converted and cropped existing introduction image to webp",
+                    "Successfully converted and cropped existing introduction image to webp / avif",
                     "message"
                 );
+                // Write converted fulltext/intro image
+                $article->images = json_encode($images);
+                $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
+                $this->printTime($begin_time);
+                return true;
             }
+
+            // A thumb image was already set, no conversion needed
+            Factory::getApplication()->enqueueMessage(
+                Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
+                "notice"
+            );
+            // Write converted fulltext/intro image
+            $article->images = json_encode($images);
+            $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
+            $this->printTime($begin_time);
+            return true;
         }
 
-        // Write converted fulltext/intro image
-        $article->images = json_encode($images);
-
+        // There were no intro image set
         // Use fulltext, if existing
         if ((isset($images->image_fulltext)) and $images->image_fulltext !== '') {
             $src_img = $images->image_fulltext;
             $src_alt = $images->image_fulltext_alt;
             $src_img = preg_replace("/#.*$/", "", $src_img);
-        // else, use the first image, if existing
+        // Else, use the first image, if existing
         } else if (count($all_images) > 0) {
             $src_img = urldecode($all_images->item(0)->getAttribute("src"));
             $src_img = preg_replace("/#.*$/", "", $src_img);
@@ -622,41 +645,37 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             ) {
                 $images->image_fulltext = $src_img;
                 $images->image_fulltext_alt = $src_alt;
-                $this->resizeWebp($src_img, [1500, 850], "_preview", $nb_converted, true);
+                $this->resizeImage($src_img, [1500, 850], "_preview", $nb_converted, true);
                 Factory::getApplication()->enqueueMessage(
                     "Article image has automatically been set to {$src_img}",
                     "message"
                 );
             }
             $article->images = json_encode($images);
-        // Else, give up
+        // Else, give up (without error)
         } else {
+            // Write converted fulltext/intro image
+            $article->images = json_encode($images);
             $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
             $this->printTime($begin_time);
             return true;
         }
 
-        $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
-
-        // Return if intro image is already set
-        if (isset($images->image_intro) and $images->image_intro !== '') {
-            Factory::getApplication()->enqueueMessage(
-                Text::_("PLG_CONTENT_AUTOMATICINTROIMAGE_MESSAGE_ALREADY_SET"),
-                "notice"
-            );
-            $this->printTime($begin_time);
-            return true;
-        }
-        // Else, also resize it
-        $nb_miniatures = 0;
-        $this->resizeWebp($src_img, [560, 450], "_thumb", $nb_miniatures, true, 80, true);
-        if ($nb_miniatures) {
+        // Resize the selected image to a thumb (and dislay a message if this was needed)
+        $save_nb_miniatures = $nb_miniatures;
+        $this->resizeImage($src_img, [560, 450], "_thumb", $nb_miniatures, true, 80, true);
+        if ($save_nb_miniatures != $nb_miniatures) {
             Factory::getApplication()->enqueueMessage(
                 "Square miniature successfully cropped",
                 "message"
            );
         }
+
+        // Final recap message
+        $this->printConvertMessages($nb_converted, $nb_moved, $nb_miniatures);
+
         $src_img = preg_replace("/\.webp$/", "_thumb.webp", $src_img);
+        $src_img = preg_replace("/\.avif$/", "_thumb.avif", $src_img);
         $thumb_dir = $this->params->get("AbsDirPath");
         $subdir_pos = strrpos($src_img, "/");
         $src_img = $thumb_dir . substr($src_img, $subdir_pos);
