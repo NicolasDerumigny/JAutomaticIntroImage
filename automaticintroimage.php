@@ -342,9 +342,13 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         */
     public function onContentBeforeSave($context, &$article, $isNew, &$data)
     {
-        // Remove empty lines
+        // Remove empty lines on comments
         if ($context == "com_engage.comment") {
-            $article->body = preg_replace("/<p>\s*<\/p>/", "", $this->formatFrench($article->body));
+            $article->body = preg_replace("!<p>((\s)|( ))*</p>!", "", $this->formatFrench($article->body));
+            if (preg_match("/^(\n|\s| )*$/", $article->body)) {
+                $article->setError("Commentaire vide !");
+                return false;
+            }
             return true;
         }
 
