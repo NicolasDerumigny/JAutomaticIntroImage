@@ -41,7 +41,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         if(fread($fh, 4) === 'VP8X'){
           fseek($fh, 20);
           $myByte = fread($fh, 1);
-          $result = ((ord($myByte) >> 1) & 1);
+          $result = ((ord($myByte) >> 1) & 1) === 1;
         }
         fclose($fh);
         return $result;
@@ -226,7 +226,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             }
         }
 
-        if ($extension == "webp" && $this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
+        if ($extension === ".webp" && $this->isWebpAnimated(JPATH_ROOT . "/" . $file_path)) {
             copy(JPATH_ROOT . "/" . $file_path, $thumb_savepath);
             $nb_miniatures++;
             return true;
