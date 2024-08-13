@@ -169,14 +169,35 @@ class plgContentAutomaticIntroImage extends CMSPlugin
     }
 
     private function formatFrench($str) {
-        $out = str_replace(" :", " :", $str);
+        // Breakable thin space to unbreakable thin spaces
+        $out = str_replace(" ", " ", $str);
+
+        // Special exception to milions / thousand separator
+        $out = preg_replace("/(Core Ultra|Ryzen|Ryzen AI|Intel)([  ])([0-9]?[0-9]?[0-9]) ([0-9][0-9][0-9][^a-zA-Z0-9])/", "$1 $3 $4", $out);
+
+        // Replace spaces by unbreakable spaces
         $out = str_replace(" $", " $", $out);
         $out = str_replace(" €", " €", $out);
-        $out = str_replace(" !", " !", $out);
-        $out = str_replace(" ?", " ?", $out);
+        $out = str_replace(" %", " %", $out);
+        $out = str_replace('<span class="mce-nbsp-wrap" contenteditable="false"> </span>', " ", $out);
+
+        // Careful, there is non-breaking space and think non-breaking space
+        // replacing non-breaking by thin
+        $out = str_replace(" !", " !", $out);
+        $out = str_replace(" ?", " ?", $out);
+        $out = str_replace(" :", " :", $out);
+        $out = str_replace(" ;", " ;", $out);
+        $out = preg_replace("/((^|[   ,>])[0-9]?[0-9]?[0-9]) ([0-9][0-9][0-9][^a-zA-Z0-9])/", "$1 $3", $out);
+        $out = preg_replace("/((^|[   ,>])[0-9]?[0-9]?[0-9]) ([0-9][0-9][0-9][^a-zA-Z0-9])/", "$1 $3", $out);
+
+        // replacing none by thin
+        $out = str_replace(" !", " !", $out);
+        $out = str_replace(" ?", " ?", $out);
+        $out = str_replace(" :", " :", $out);
+        $out = str_replace(" ;", " ;", $out);
         // Twice to cover all cases
-        $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
-        $out = preg_replace("/([0-9]) ([0-9])/", "$1 $2", $out);
+        $out = preg_replace("/((^|[   ,>])[0-9]?[0-9]?[0-9]) ([0-9][0-9][0-9][^a-zA-Z0-9])/", "$1 $3", $out);
+        $out = preg_replace("/((^|[   ,>])[0-9]?[0-9]?[0-9]) ([0-9][0-9][0-9][^a-zA-Z0-9])/", "$1 $3", $out);
         return $out;
     }
 
