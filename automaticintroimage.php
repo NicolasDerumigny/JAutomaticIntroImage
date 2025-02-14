@@ -206,7 +206,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
     // do nothing
     // Fails in crop mode if the size is not sufficient. Copy the file in non-crop
     // mode if the size is not sufficient
-    private function resizeImage($file_path, $dimensions, $suffix, &$nb_miniatures, $crop = false, $quality=80, $force_resize = false) {
+    private function resizeImage($file_path, $dimensions, $suffix, &$nb_miniatures, $crop = false, $quality=90, $force_resize = false) {
         if (is_array($dimensions)) {
             $width = $dimensions[0];
             $height = $dimensions[1];
@@ -344,7 +344,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         if (str_ends_with($image_location, ".svg")) {
             return;
         }
-        $this->resizeImage($image_location, 1920, "_fhd", $nb_miniatures, false, 90);
+        $this->resizeImage($image_location, 1920, "_fhd", $nb_miniatures);
         $this->resizeImage($image_location, 1280, "_sd", $nb_miniatures);
         $this->resizeImage($image_location, 450, "_mini", $nb_miniatures);
     }
