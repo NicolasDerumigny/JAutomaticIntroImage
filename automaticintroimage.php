@@ -161,7 +161,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         );
 
         $str = strtr($str,  $unwanted_array);
-        $str = preg_replace("/[•,;!?:\"'><]/", "", $str);
+        $str = preg_replace("/[•,;!?:\"'><’]/", "", $str);
         $str = preg_replace("/[  ]/", "-", $str); // Non-breaking spaces
         $str = preg_replace("/-+/", "-", $str);
         $str = preg_replace("/-*$/", "", $str);
