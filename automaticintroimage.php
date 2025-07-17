@@ -350,7 +350,7 @@ class plgContentAutomaticIntroImage extends CMSPlugin
     }
 
     /**
-        * Automatic creation of resized intro image from article full image
+        * Auto-formatiing of Akeeba Engage Comments
         *
         * @param   string   $context  The context of the content being passed to the
         plugin.
@@ -363,9 +363,16 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         */
     public function onContentBeforeSave($context, &$article, $isNew, &$data)
     {
-        // Remove empty lines on comments
+        // Comments
         if ($context == "com_engage.comment") {
-            $article->body = preg_replace("!<p>((\s)|( ))*</p>!", "", $this->formatFrench($article->body));
+            // No line jump at the end of paragraphs
+            $article->body = preg_replace("!((\s| )*<br\s*/?\s*>)+</p>!", "</p>", $this->formatFrench($article->body));
+            // No line jump at the begining of paragraphs
+            $article->body = preg_replace("!<p>((\s| )*<br\s*/?\s*>)+!", "<p>", $article->body);
+            // No multiple line jumps
+            $article->body = preg_replace("!((\s| )*<br\s*/?\s*>)+!", "<br>", $article->body);
+            // No empty paragraphs
+            $article->body = preg_replace("!<p>(\s| )*</p>!", "", $article->body);
             if (preg_match("/^(\n|\s| )*$/", $article->body)) {
                 $article->setError("Commentaire vide !");
                 return false;
