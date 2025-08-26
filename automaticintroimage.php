@@ -492,10 +492,6 @@ class plgContentAutomaticIntroImage extends CMSPlugin
 
         // Convert all images to webp / avif
         $dom = new DOMDocument("1.0", "utf-8");
-        if ($article->introtext === "") {
-            $this->printTime($begin_time);
-            return true;
-        }
         $article->introtext = $this->formatFrench($article->introtext);
         $article->introtext = preg_replace(
             '/<span class="mce-nbsp-wrap" contenteditable="false">[\s]*</',
