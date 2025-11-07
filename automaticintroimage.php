@@ -363,6 +363,9 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         */
     public function onContentBeforeSave($context, &$article, $isNew, &$data)
     {
+        // Raise memory limit to avoid reaching server's default
+        ini_set('memory_limit', '256M');
+
         // Comments
         if ($context == "com_engage.comment") {
             // No line jump at the end of paragraphs
