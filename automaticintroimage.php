@@ -13,7 +13,7 @@ use Joomla\CMS\Helper\TagsHelper;
 use Joomla\CMS\Categories\Categories;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Language\Text;
-use Joomla\CMS\Filesystem\Folder;
+use Joomla\Filesystem\Folder;
 
 class plgContentAutomaticIntroImage extends CMSPlugin
 {
