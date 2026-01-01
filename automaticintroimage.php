@@ -101,6 +101,16 @@ class plgContentAutomaticIntroImage extends CMSPlugin
         // Create webp image
         $is_gif = false;
         if (file_exists($image_location)) {
+            // Check image size, if bigger than 10 MiB, delete with error
+            if (filesize($image_location) > 10 * 1024 * 1024) {
+                Factory::getApplication()->enqueueMessage(
+                    "Image {$image_location} is too big, server might crash! Deleting...",
+                    "error"
+                );
+                unlink($image_location);
+                return false;
+            }
+
             $info = getimagesize($image_location);
             $is_alpha = false;
             if ($info["mime"] == "image/jpeg") {
