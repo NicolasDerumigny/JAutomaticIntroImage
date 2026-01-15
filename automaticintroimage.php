@@ -528,6 +528,19 @@ class plgContentAutomaticIntroImage extends CMSPlugin
                 $p->parentNode->replaceChild($new_node, $p);
             }
         }
+        $cells = $dom->getElementsByTagName('tr');
+        foreach ($cells as $cell) {
+            $cell->removeAttribute('style');
+        }
+        $cells = $dom->getElementsByTagName('td');
+        foreach ($cells as $cell) {
+            $cell->removeAttribute('style');
+        }
+        $cells = $dom->getElementsByTagName('th');
+        foreach ($cells as $cell) {
+            $cell->removeAttribute('style');
+        }
+
         $all_images = $dom->getElementsByTagName("img");
 
         $loadhtml_timestamp = hrtime(true);
