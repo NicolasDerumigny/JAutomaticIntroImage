@@ -510,6 +510,8 @@ class plgContentAutomaticIntroImage extends CMSPlugin
             '/<span class="mce-nbsp-wrap" contenteditable="false">[\s]*</',
             '<span class="mce-nbsp-wrap" contenteditable="false"> <',
             $article->introtext);
+        $article->introtext = str_replace('><br><img','><img',$article->introtext);
+        $article->introtext = str_replace('<br></p','</p',$article->introtext);
         libxml_use_internal_errors(true);
         $dom->loadHTML('<meta charset="utf8">' . $article->introtext, LIBXML_HTML_NODEFDTD | LIBXML_HTML_NOIMPLIED);
         libxml_clear_errors();
